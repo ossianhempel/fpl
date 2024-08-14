@@ -1,0 +1,10 @@
+pandas
+scikit-learn
+numpy
+plotly.express
+matplotlib
+pulp
+xgboost
+datetime 
+pytest 
+xgboost
