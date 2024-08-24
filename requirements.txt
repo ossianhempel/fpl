@@ -8,3 +8,11 @@ xgboost
 datetime 
 pytest 
 xgboost
+python-dotenv 
+minio
+datetime
+urllib3
+psycopg2-binary
+duckdb
+sqlalchemy
+requests
