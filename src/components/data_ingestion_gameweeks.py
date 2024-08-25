@@ -58,7 +58,6 @@ class DataIngestion:
         Transform the data as needed and remove duplicates.
         """
 
-        # TODO - deal with gameweeks for aggregated older data (fill with what?)
         print("Transforming and deduplicating data...")
         try:
             # Define the columns and their corresponding transformations
@@ -84,10 +83,11 @@ class DataIngestion:
                     elif dtype == 'datetime':
                         df[column] = pd.to_datetime(df[column], errors='coerce')
 
-            # Remove duplicates based on relevant columns (adjust as needed)
-            # TODO - duplicates on what?
-            if 'element' in df.columns and 'fixture' in df.columns:
-                df = df.drop_duplicates(subset=['element', 'fixture'], keep='last')
+            # Remove duplicates based on 'name' and 'GW'
+            if 'name' in df.columns and 'GW' in df.columns:
+                df = df.drop_duplicates(subset=['name', 'GW'], keep='last')
+            else:
+                print("Warning: 'name' or 'GW' column missing. Deduplication skipped.")
             
             return df
         except Exception as e:
