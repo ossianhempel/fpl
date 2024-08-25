@@ -10,6 +10,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')
 sys.path.append(project_root)
 from src.utils import connect_to_minio, fetch_all_from_minio, connect_to_postgres, query_postgres
 
+# TODO - refactor to use Polars
 
 # Load environment variables
 load_dotenv()
