@@ -48,8 +48,12 @@ class DataIngestion:
             if dfs is None or len(dfs) == 0:
                 raise Exception(f"No data fetched from bucket '{self.config.minio_bucket_name}'. Check if the bucket exists and contains objects.")
             
+            print(f"Number of dataframes fetched: {len(dfs)}")
+            for key, df in dfs.items():
+                print(f"Dataframe {key} shape: {df.shape}")
+
             combined_df = pd.concat(dfs.values(), ignore_index=True)
-            print(f"Combined data: {combined_df.head(5)}")
+            print(f"Combined dataframe shape: {combined_df.shape}")
             return combined_df
         except Exception as e:
             raise Exception(f"Error during data ingestion: {e}")
@@ -88,8 +92,16 @@ class DataIngestion:
                 if column in df.columns:
                     df[column] = df[column].astype(bool)
 
-            # Remove duplicates based on 'id' column
-            df = df.drop_duplicates(subset=['id'], keep='last')
+            # Determine the deduplication key
+            if 'pulse_id' in df.columns and 'code' in df.columns:
+                dedup_key = ['pulse_id', 'code']
+            elif 'code' in df.columns:
+                dedup_key = ['code']
+            else:
+                raise ValueError("Neither 'pulse_id' and 'code' nor 'code' alone found in the dataframe")
+
+            # Remove duplicates based on the determined key
+            df = df.drop_duplicates(subset=dedup_key, keep='last')
             
             # Remove 'stats' column if it exists
             if 'stats' in df.columns:
