@@ -41,7 +41,8 @@ class DataIngestion:
             dfs = fetch_all_from_minio(
                 self.config.minio_endpoint, 
                 self.config.access_key, 
-                self.config.secret_key
+                self.config.secret_key,
+                "gameweeks"
             )
 
             if dfs is None or len(dfs) == 0:
