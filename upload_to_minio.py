@@ -9,4 +9,4 @@ MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY')
 MINIO_SECRET = os.getenv('MINIO_SECRET_KEY')
 
 client = connect_to_minio(endpoint=MINIO_ENDPOINT, access_key=MINIO_ACCESS_KEY, secret_key=MINIO_SECRET)
-upload_to_minio(client=client, file_path="merged_gw_20_21.csv", destination_bucket="gameweeks")
+upload_to_minio(client=client, file_path="merged_gw_24_25.csv", destination_bucket="gameweeks")
