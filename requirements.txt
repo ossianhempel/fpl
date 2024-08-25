@@ -16,3 +16,5 @@ psycopg2-binary
 duckdb
 sqlalchemy
 requests
+polars
+duckdb
