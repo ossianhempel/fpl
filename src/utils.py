@@ -119,15 +119,13 @@ def fetch_from_minio(endpoint, access_key, secret_key, object_name):
         print("Error: ", e)
         return None
     
-def fetch_all_from_minio(endpoint, access_key, secret_key):
-    # TODO - refactor to take bucket name and client as parameters
+def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
     client = connect_to_minio(endpoint, access_key, secret_key)
 
     if client is None:
         print("Failed to connect to MinIO")
         return None
 
-    bucket_name = 'gameweeks'
     dataframes = {}
 
     try:
