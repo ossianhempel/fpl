@@ -121,12 +121,15 @@ class DataIngestion:
             df.rename(columns={
                 'event': 'gameweek',
             }, inplace=True)
+
+            # drop unnecessary columns
+            df.drop(['id'], axis=1, inplace=True)
             
             return df
         except Exception as e:
             raise Exception(f"Error transforming data: {e}")
     
-    def _create_table_if_not_exists(self, connection, table_name: str):
+    def _create_table_if_not_exists(self, cursor, table_name: str):
         """
         Create the target table in PostgreSQL if it doesn't already exist.
         """
@@ -151,44 +154,53 @@ class DataIngestion:
                 pulse_id INTEGER
             );
         """
-        with connection.cursor() as cursor:
-            query_postgres(cursor, create_table_query)
+        query_postgres(cursor, create_table_query)
         print(f"Table '{table_name}' created or verified.")
     
     def ingest_data(self):
         """
         Main method to fetch, transform, deduplicate, and ingest data into PostgreSQL.
         """
+        conn = None
+        cursor = None
         try:
             # Fetch and transform data
             df = self._initiate_data_ingestion()  # Fetch all data
             transformed_df = self._transform_and_dedupe_data(df)  # Transform and deduplicate data
             
             # Connect to PostgreSQL using your utility function
-            connection = connect_to_postgres(
+            conn = connect_to_postgres(
                 self.config.postgres_database, 
                 self.config.postgres_host, 
                 self.config.postgres_user, 
                 self.config.postgres_password, 
                 self.config.postgres_port
             )
-            
-            if connection is None:
-                raise Exception("Failed to establish connection to PostgreSQL")
+            cursor = conn.cursor()  # Create a cursor from the connection object
             
             # Create table if it doesn't exist
-            self._create_table_if_not_exists(connection, self.config.postgres_table_name)
+            self._create_table_if_not_exists(cursor, self.config.postgres_table_name)
             
-            # Perform full refresh: replace the entire table with new data
+            # Truncate the table to perform a full refresh
+            truncate_query = f"TRUNCATE TABLE {self.config.postgres_table_name};"
+            cursor.execute(truncate_query)
+            conn.commit()  # Commit the transaction after truncation
+            print(f"Table '{self.config.postgres_table_name}' truncated for a full refresh.")
+            
+            # Insert the transformed data into the table after truncation
             engine = create_engine(f'postgresql://{self.config.postgres_user}:{self.config.postgres_password}@{self.config.postgres_host}:{self.config.postgres_port}/{self.config.postgres_database}')
-            transformed_df.to_sql(self.config.postgres_table_name, engine, if_exists='replace', index=False)
+            transformed_df.to_sql(self.config.postgres_table_name, engine, if_exists='append', index=False)
             print(f"Data successfully ingested into '{self.config.postgres_table_name}' table with a full refresh.")
             
-            # Close the connection
-            connection.close()
-        
         except Exception as e:
             raise Exception(f"Error during data ingestion: {e}")
+        
+        finally:
+            # Ensure the cursor and connection are closed properly
+            if cursor is not None:
+                cursor.close()
+            if conn is not None:
+                conn.close()
 
 if __name__ == "__main__":
     obj = DataIngestion()
