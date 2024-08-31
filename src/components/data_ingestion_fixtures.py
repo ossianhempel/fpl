@@ -107,6 +107,21 @@ class DataIngestion:
             if 'stats' in df.columns:
                 df = df.drop(columns=['stats'])
             
+            # add season column
+            def determine_season(date):
+                year = date.year
+                if date.month >= 7:  # July or later
+                    return f"{year}-{str(year + 1)[-2:]}"
+                else:  # Before July
+                    return f"{year - 1}-{str(year)[-2:]}"
+            
+            df['season'] = df['kickoff_time'].apply(determine_season)
+
+            # rename columns
+            df.rename(columns={
+                'event': 'gameweek',
+            }, inplace=True)
+            
             return df
         except Exception as e:
             raise Exception(f"Error transforming data: {e}")
@@ -118,7 +133,8 @@ class DataIngestion:
         create_table_query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
                 code INTEGER,
-                event INTEGER,
+                gameweek INTEGER,
+                season TEXT,
                 finished BOOLEAN,
                 finished_provisional BOOLEAN,
                 id INTEGER PRIMARY KEY,
