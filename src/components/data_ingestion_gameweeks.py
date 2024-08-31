@@ -104,6 +104,10 @@ class DataIngestion:
             # rename columns
             df.rename(columns={
                 'GW': 'gameweek',
+                'name': 'player_name',
+                'minutes': 'minutes_played',
+                'value': 'player_cost',
+                'starts': 'player_started',
             }, inplace=True)
             
             return df
@@ -139,16 +143,15 @@ class DataIngestion:
                 ict_index NUMERIC,
                 influence NUMERIC,
                 kickoff_time TIMESTAMP,
-                minutes INTEGER,
+                minutes_played INTEGER,
                 opponent_team INTEGER,
                 own_goals INTEGER,
                 penalties_missed INTEGER,
                 penalties_saved INTEGER,
                 red_cards INTEGER,
-                round INTEGER,
                 saves INTEGER,
                 selected INTEGER,
-                starts INTEGER,
+                player_started BOOLEAN,
                 team_a_score INTEGER,
                 team_h_score INTEGER,
                 threat NUMERIC,
