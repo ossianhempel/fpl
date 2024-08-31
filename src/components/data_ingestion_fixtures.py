@@ -132,12 +132,12 @@ class DataIngestion:
         """
         create_table_query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
+                fixture_id SERIAL PRIMARY KEY,
                 code INTEGER,
                 gameweek INTEGER,
                 season TEXT,
                 finished BOOLEAN,
                 finished_provisional BOOLEAN,
-                id INTEGER PRIMARY KEY,
                 kickoff_time TIMESTAMP,
                 minutes INTEGER,
                 provisional_start_time BOOLEAN,

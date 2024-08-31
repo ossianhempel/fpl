@@ -116,6 +116,7 @@ class DataIngestion:
         """
         create_table_query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
+                gameweek_id SERIAL PRIMARY KEY,
                 gameweek INTEGER,
                 name TEXT,
                 position TEXT,
