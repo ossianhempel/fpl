@@ -126,7 +126,7 @@ class DataIngestion:
         except Exception as e:
             raise Exception(f"Error transforming data: {e}")
     
-    def _create_table_if_not_exists(self, cursor, table_name: str):
+    def _create_table_if_not_exists(self, connection, table_name: str):
         """
         Create the target table in PostgreSQL if it doesn't already exist.
         """
@@ -151,7 +151,8 @@ class DataIngestion:
                 pulse_id INTEGER
             );
         """
-        query_postgres(cursor, create_table_query)
+        with connection.cursor() as cursor:
+            query_postgres(cursor, create_table_query)
         print(f"Table '{table_name}' created or verified.")
     
     def ingest_data(self):
@@ -164,7 +165,7 @@ class DataIngestion:
             transformed_df = self._transform_and_dedupe_data(df)  # Transform and deduplicate data
             
             # Connect to PostgreSQL using your utility function
-            cursor = connect_to_postgres(
+            connection = connect_to_postgres(
                 self.config.postgres_database, 
                 self.config.postgres_host, 
                 self.config.postgres_user, 
@@ -172,8 +173,11 @@ class DataIngestion:
                 self.config.postgres_port
             )
             
+            if connection is None:
+                raise Exception("Failed to establish connection to PostgreSQL")
+            
             # Create table if it doesn't exist
-            self._create_table_if_not_exists(cursor, self.config.postgres_table_name)
+            self._create_table_if_not_exists(connection, self.config.postgres_table_name)
             
             # Perform full refresh: replace the entire table with new data
             engine = create_engine(f'postgresql://{self.config.postgres_user}:{self.config.postgres_password}@{self.config.postgres_host}:{self.config.postgres_port}/{self.config.postgres_database}')
@@ -181,7 +185,7 @@ class DataIngestion:
             print(f"Data successfully ingested into '{self.config.postgres_table_name}' table with a full refresh.")
             
             # Close the connection
-            cursor.connection.close()
+            connection.close()
         
         except Exception as e:
             raise Exception(f"Error during data ingestion: {e}")
