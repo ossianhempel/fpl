@@ -102,7 +102,7 @@ class DataIngestion:
                 else:  # Before July
                     return f"{year - 1}-{str(year)[-2:]}"
             
-            df['season'] = df['kickoff_time'].apply(determine_season)
+            df.loc[:, 'season'] = df['kickoff_time'].apply(determine_season)
 
             # rename columns
             df.rename(columns={
@@ -112,6 +112,9 @@ class DataIngestion:
                 'value': 'player_cost',
                 'starts': 'player_started',
             }, inplace=True)
+
+            # drop unnecessary columns
+            df.drop(['round'], axis=1, inplace=True)
 
             # Identify the opponent team by using the groupby operation on 'kickoff_time' and 'fixture'
             def identify_opponent_team(group):
@@ -123,8 +126,12 @@ class DataIngestion:
                     group['opponent_team'] = None  # Handle cases where data might be incomplete
                 return group
 
-            df = df.groupby(['kickoff_time', 'fixture']).apply(identify_opponent_team)
+            df = df.groupby(['kickoff_time', 'fixture'], group_keys=False).apply(identify_opponent_team)
             
+            # Convert player_started to boolean
+            if 'player_started' in df.columns:
+                df['player_started'] = df['player_started'].astype(bool)
+
             return df
         except Exception as e:
             raise Exception(f"Error transforming data: {e}")
@@ -137,11 +144,11 @@ class DataIngestion:
             CREATE TABLE IF NOT EXISTS {table_name} (
                 gameweek_id SERIAL PRIMARY KEY,
                 gameweek INTEGER,
-                name TEXT,
+                player_name TEXT,
                 position TEXT,
                 team TEXT,
                 season TEXT,
-                xP NUMERIC,
+                "xP" NUMERIC,
                 assists INTEGER,
                 bonus INTEGER,
                 bps INTEGER,
@@ -159,7 +166,7 @@ class DataIngestion:
                 influence NUMERIC,
                 kickoff_time TIMESTAMP,
                 minutes_played INTEGER,
-                opponent_team INTEGER,
+                opponent_team TEXT,
                 own_goals INTEGER,
                 penalties_missed INTEGER,
                 penalties_saved INTEGER,
@@ -174,7 +181,7 @@ class DataIngestion:
                 transfers_balance INTEGER,
                 transfers_in INTEGER,
                 transfers_out INTEGER,
-                value NUMERIC,
+                player_cost NUMERIC,
                 was_home BOOLEAN,
                 yellow_cards INTEGER
             );
@@ -186,33 +193,46 @@ class DataIngestion:
         """
         Main method to fetch, transform, deduplicate, and ingest data into PostgreSQL.
         """
+        conn = None
+        cursor = None
         try:
             # Fetch and transform data
             df = self._initiate_data_ingestion()  # Fetch all data
             transformed_df = self._transform_and_dedupe_data(df)  # Transform and deduplicate data
             
             # Connect to PostgreSQL using your utility function
-            cursor = connect_to_postgres(
+            conn = connect_to_postgres(
                 self.config.postgres_database, 
                 self.config.postgres_host, 
                 self.config.postgres_user, 
                 self.config.postgres_password, 
                 self.config.postgres_port
             )
+            cursor = conn.cursor()  # Create a cursor from the connection object
             
             # Create table if it doesn't exist
             self._create_table_if_not_exists(cursor, self.config.postgres_table_name)
             
-            # Perform full refresh: replace the entire table with new data
+            # Truncate the table to perform a full refresh
+            truncate_query = f"TRUNCATE TABLE {self.config.postgres_table_name};"
+            cursor.execute(truncate_query)
+            conn.commit()  # Commit the transaction after truncation
+            print(f"Table '{self.config.postgres_table_name}' truncated for a full refresh.")
+            
+            # Insert the transformed data into the table after truncation
             engine = create_engine(f'postgresql://{self.config.postgres_user}:{self.config.postgres_password}@{self.config.postgres_host}:{self.config.postgres_port}/{self.config.postgres_database}')
-            transformed_df.to_sql(self.config.postgres_table_name, engine, if_exists='replace', index=False)
+            transformed_df.to_sql(self.config.postgres_table_name, engine, if_exists='append', index=False)
             print(f"Data successfully ingested into '{self.config.postgres_table_name}' table with a full refresh.")
             
-            # Close the connection
-            cursor.connection.close()
-        
         except Exception as e:
             raise Exception(f"Error during data ingestion: {e}")
+        
+        finally:
+            # Ensure the cursor and connection are closed properly
+            if cursor is not None:
+                cursor.close()
+            if conn is not None:
+                conn.close()
 
 if __name__ == "__main__":
     obj = DataIngestion()
