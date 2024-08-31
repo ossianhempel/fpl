@@ -74,7 +74,8 @@ class DataIngestion:
                 'influence': 'numeric',
                 'threat': 'numeric',
                 'value': 'numeric',
-                'kickoff_time': 'datetime'
+                'kickoff_time': 'datetime',
+                'was_home': 'boolean',
             }
 
             # Apply transformations only if the column exists in the dataframe
@@ -82,6 +83,8 @@ class DataIngestion:
                 if column in df.columns:
                     if dtype == 'numeric':
                         df[column] = pd.to_numeric(df[column], errors='coerce')
+                    elif dtype == 'boolean':
+                        df[column] = df[column].astype(bool)
                     elif dtype == 'datetime':
                         df[column] = pd.to_datetime(df[column], errors='coerce')
 
@@ -109,6 +112,18 @@ class DataIngestion:
                 'value': 'player_cost',
                 'starts': 'player_started',
             }, inplace=True)
+
+            # Identify the opponent team by using the groupby operation on 'kickoff_time' and 'fixture'
+            def identify_opponent_team(group):
+                # There should be exactly two teams in each group
+                if len(group['team'].unique()) == 2:
+                    # The opponent team is the one that is not the current team
+                    group['opponent_team'] = group['team'].apply(lambda x: group['team'].unique()[1] if x == group['team'].unique()[0] else group['team'].unique()[0])
+                else:
+                    group['opponent_team'] = None  # Handle cases where data might be incomplete
+                return group
+
+            df = df.groupby(['kickoff_time', 'fixture']).apply(identify_opponent_team)
             
             return df
         except Exception as e:
