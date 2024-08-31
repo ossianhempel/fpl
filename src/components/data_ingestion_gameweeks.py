@@ -90,6 +90,21 @@ class DataIngestion:
                 df = df.drop_duplicates(subset=['name', 'GW'], keep='last')
             else:
                 print("Warning: 'name' or 'GW' column missing. Deduplication skipped.")
+
+            # add season column
+            def determine_season(date):
+                year = date.year
+                if date.month >= 7:  # July or later
+                    return f"{year}-{str(year + 1)[-2:]}"
+                else:  # Before July
+                    return f"{year - 1}-{str(year)[-2:]}"
+            
+            df['season'] = df['kickoff_time'].apply(determine_season)
+
+            # rename columns
+            df.rename(columns={
+                'GW': 'gameweek',
+            }, inplace=True)
             
             return df
         except Exception as e:
@@ -101,10 +116,11 @@ class DataIngestion:
         """
         create_table_query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
-                GW INTEGER,
+                gameweek INTEGER,
                 name TEXT,
                 position TEXT,
                 team TEXT,
+                season TEXT,
                 xP NUMERIC,
                 assists INTEGER,
                 bonus INTEGER,
