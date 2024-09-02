@@ -37,12 +37,20 @@ class DataIngestion:
         assert self.config.postgres_table_name == "stg_fixtures", f"Not correct table naming (should be 'stg_fixtures', received {self.config.postgres_table_name})"
         
         try:
-            # Fetch all data from MinIO
+            # fetch all data from MinIO
             dfs = fetch_all_from_minio(
                 self.config.minio_endpoint, 
                 self.config.access_key, 
                 self.config.secret_key,
                 "fixtures"
+            )
+
+            # fetch teams data for mapping
+            teams_dfs = fetch_all_from_minio(
+                self.config.minio_endpoint, 
+                self.config.access_key, 
+                self.config.secret_key,
+                "teams"
             )
 
             if dfs is None or len(dfs) == 0:
@@ -53,12 +61,14 @@ class DataIngestion:
                 print(f"Dataframe {key} shape: {df.shape}")
 
             combined_df = pd.concat(dfs.values(), ignore_index=True)
-            print(f"Combined dataframe shape: {combined_df.shape}")
-            return combined_df
+            combined_teams_df = pd.concat(teams_dfs.values(), ignore_index=True)
+            print(f"Combined fixtures dataframe shape: {combined_df.shape}")
+            print(f"Combined teams dataframe shape: {combined_teams_df.shape}")
+            return combined_df, combined_teams_df
         except Exception as e:
             raise Exception(f"Error during data ingestion: {e}")
     
-    def _transform_and_dedupe_data(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _transform_and_dedupe_data(self, df: pd.DataFrame, teams_df: pd.DataFrame) -> pd.DataFrame:
         print("Transforming and deduplicating data...")
         try:
             # Define the columns and their corresponding transformations
@@ -125,6 +135,16 @@ class DataIngestion:
             # drop unnecessary columns
             df.drop(['id'], axis=1, inplace=True)
             
+            # Map team names
+            teams_df = teams_df[['id', 'name', 'season']]
+            df = df.merge(teams_df, left_on=['team_h', 'season'], right_on=['id', 'season'], how='left')
+            df = df.rename(columns={'name': 'team_h_name'})
+            df = df.drop(columns=['id'])
+            
+            df = df.merge(teams_df, left_on=['team_a', 'season'], right_on=['id', 'season'], how='left')
+            df = df.rename(columns={'name': 'team_a_name'})
+            df = df.drop(columns=['id'])
+            
             return df
         except Exception as e:
             raise Exception(f"Error transforming data: {e}")
@@ -146,8 +166,10 @@ class DataIngestion:
                 provisional_start_time BOOLEAN,
                 started BOOLEAN,
                 team_a INTEGER,
+                team_a_name TEXT,
                 team_a_score FLOAT,
                 team_h INTEGER,
+                team_h_name TEXT,
                 team_h_score FLOAT,
                 team_h_difficulty INTEGER,
                 team_a_difficulty INTEGER,
@@ -165,8 +187,8 @@ class DataIngestion:
         cursor = None
         try:
             # Fetch and transform data
-            df = self._initiate_data_ingestion()  # Fetch all data
-            transformed_df = self._transform_and_dedupe_data(df)  # Transform and deduplicate data
+            df, teams_df = self._initiate_data_ingestion()  # Fetch all data
+            transformed_df = self._transform_and_dedupe_data(df, teams_df)  # Transform and deduplicate data
             
             # Connect to PostgreSQL using your utility function
             conn = connect_to_postgres(
