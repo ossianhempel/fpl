@@ -4,6 +4,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from dataclasses import dataclass
 from sqlalchemy import create_engine
+from great_expectations.dataset import Dataset
 
 # Add the project's root directory to the PYTHONPATH
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -130,10 +131,8 @@ class DataIngestion:
             # rename columns
             df.rename(columns={
                 'event': 'gameweek',
+                'id': 'seasonal_fixture_id'
             }, inplace=True)
-
-            # drop unnecessary columns
-            df.drop(['id'], axis=1, inplace=True)
             
             # Map team names
             teams_df = teams_df[['id', 'name', 'season']]
@@ -156,6 +155,7 @@ class DataIngestion:
         create_table_query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
                 fixture_id SERIAL PRIMARY KEY,
+                seasonal_fixture_id INTEGER,
                 code INTEGER,
                 gameweek INTEGER,
                 season TEXT,
@@ -178,6 +178,17 @@ class DataIngestion:
         """
         query_postgres(cursor, create_table_query)
         print(f"Table '{table_name}' created or verified.")
+    
+    def _validate_data(self, df: pd.DataFrame):
+        """
+        Validate the data using Great Expectations.
+        """
+        dataset = Dataset(df)
+        dataset.expect_column_values_to_be_unique(column='fixture_id')
+        dataset.expect_column_values_to_be_unique(column='gameweek')
+        dataset.expect_column_values_to_be_unique(column='season')
+        dataset.expect_column_values_to_be_unique(column='fixture')
+        # TODO - in progress
     
     def ingest_data(self):
         """

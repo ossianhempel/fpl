@@ -4,6 +4,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from dataclasses import dataclass
 from sqlalchemy import create_engine
+from great_expectations.dataset import Dataset
 
 # Add the project's root directory to the PYTHONPATH
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -40,10 +41,10 @@ class DataIngestion:
         try:
             # Fetch all data from MinIO
             dfs = fetch_all_from_minio(
-                self.config.minio_endpoint, 
-                self.config.access_key, 
-                self.config.secret_key,
-                "gameweeks"
+                endpoint=self.config.minio_endpoint, 
+                access_key=self.config.access_key, 
+                secret_key=self.config.secret_key,
+                bucket_name="gameweeks",
             )
 
             if dfs is None or len(dfs) == 0:
@@ -95,14 +96,14 @@ class DataIngestion:
                 print("Warning: 'name' or 'GW' column missing. Deduplication skipped.")
 
             # add season column
-            def determine_season(date):
+            def _determine_season(date):
                 year = date.year
                 if date.month >= 7:  # July or later
                     return f"{year}-{str(year + 1)[-2:]}"
                 else:  # Before July
                     return f"{year - 1}-{str(year)[-2:]}"
             
-            df.loc[:, 'season'] = df['kickoff_time'].apply(determine_season)
+            df.loc[:, 'season'] = df['kickoff_time'].apply(_determine_season)
 
             # rename columns
             df.rename(columns={
@@ -111,6 +112,7 @@ class DataIngestion:
                 'minutes': 'minutes_played',
                 'value': 'player_cost',
                 'starts': 'player_started',
+                'fixture': 'seasonal_fixture_id'
             }, inplace=True)
 
             # drop unnecessary columns
@@ -126,7 +128,7 @@ class DataIngestion:
                     group['opponent_team'] = None  # Handle cases where data might be incomplete
                 return group
 
-            df = df.groupby(['kickoff_time', 'fixture'], group_keys=False).apply(identify_opponent_team)
+            df = df.groupby(['kickoff_time', 'seasonal_fixture_id'], group_keys=False).apply(identify_opponent_team)
             
             # Convert player_started to boolean
             if 'player_started' in df.columns:
@@ -149,7 +151,7 @@ class DataIngestion:
                 position TEXT,
                 season TEXT,
                 gameweek INTEGER,
-                fixture INTEGER,
+                seasonal_fixture_id INTEGER,
                 team TEXT,
                 opponent_team TEXT,
                 team_a_score INTEGER,
@@ -188,6 +190,17 @@ class DataIngestion:
         """
         query_postgres(cursor, create_table_query)
         print(f"Table '{table_name}' created or verified.")
+    
+    def _validate_data(self, df: pd.DataFrame):
+        """
+        Validate the data using Great Expectations.
+        """
+        dataset = Dataset(df)
+        dataset.expect_column_values_to_be_unique(column='player_performance_id')
+        dataset.expect_column_values_to_be_unique(column='gameweek')
+        dataset.expect_column_values_to_be_unique(column='season')
+        dataset.expect_column_values_to_be_unique(column='fixture')
+        # TODO - in progress
     
     def ingest_data(self):
         """
