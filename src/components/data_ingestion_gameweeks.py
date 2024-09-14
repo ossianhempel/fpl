@@ -89,19 +89,20 @@ class DataIngestion:
                     elif dtype == 'datetime':
                         df[column] = pd.to_datetime(df[column], errors='coerce')
 
-            # Remove duplicates based on 'name' and 'GW'
-            if 'name' in df.columns and 'GW' in df.columns:
-                df = df.drop_duplicates(subset=['name', 'GW'], keep='last')
+            # Remove duplicates based on 'name', 'GW', and 'kickoff_time'
+            if 'name' in df.columns and 'GW' in df.columns and 'kickoff_time' in df.columns:
+                df = df.drop_duplicates(subset=['name', 'GW', 'kickoff_time'], keep='last')
             else:
-                print("Warning: 'name' or 'GW' column missing. Deduplication skipped.")
+                print("Warning: 'name', 'GW', or 'kickoff_time' column missing. Deduplication skipped.")
 
             # add season column
             def _determine_season(date):
                 year = date.year
-                if date.month >= 7:  # July or later
+                month = date.month
+                if month >= 7:  # July or later # THIS MIGHT CAUSE DUPLICATES IN SEASONAL ID AND SEASON - CHECK
                     return f"{year}-{str(year + 1)[-2:]}"
                 else:  # Before July
-                    return f"{year - 1}-{str(year)[-2:]}"
+                    return f"{year-1}-{str(year)[-2:]}"
             
             df.loc[:, 'season'] = df['kickoff_time'].apply(_determine_season)
 
@@ -133,6 +134,23 @@ class DataIngestion:
             # Convert player_started to boolean
             if 'player_started' in df.columns:
                 df['player_started'] = df['player_started'].astype(bool)
+
+            # Ensure data types match those in the PostgreSQL table
+            df = df.astype({
+                'player_name': 'str',
+                'player_cost': 'float',
+                'total_points': 'int',
+                'position': 'str',
+                'season': 'str',
+                'gameweek': 'int',
+                'seasonal_fixture_id': 'int',
+                'team': 'str',
+                'opponent_team': 'str',
+                'team_a_score': 'int',
+                'team_h_score': 'int',
+                'was_home': 'bool',
+                # ... (add other columns as needed)
+            })
 
             return df
         except Exception as e:
