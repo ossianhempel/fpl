@@ -227,8 +227,8 @@ if connection:
                 st.write(f"Latest Kickoff Time: {latest_kickoff_time}")
                 
                 # if latest kickoff time is more than 1 week ago, print a message regarding the data freshness
-                if latest_kickoff_time < datetime.now() - timedelta(days=7):
-                    st.warning("Data is more than 1 week old. Please refresh the data.")
+                if latest_kickoff_time < datetime.now() - timedelta(days=14):
+                    st.warning("Data is more than 2 weeks old. Owner needs to update the data.")
             else:
                 st.write("No kickoff time data available for the selected season.")
 
