@@ -13,16 +13,17 @@ from sqlalchemy import create_engine
 def connect_to_postgres(database, host, user, password, port):
     try:
         connection = psycopg2.connect(
-                            database=database,
-                            host=host,
-                            user=user,
-                            password=password,
-                            port=port)
-        cursor = connection.cursor()
-        print('Connection to PG established, Cursor object returned.')
-        return cursor
+            database=database,
+            host=host,
+            user=user,
+            password=password,
+            port=port
+        )
+        print('Connection to PG established, Connection object returned.')
+        return connection  # Return the connection object, not the cursor
     except Exception as e:
         print('Error: ', e)
+        return None
 
 def query_postgres(cursor, query):
     cursor.execute(query)
