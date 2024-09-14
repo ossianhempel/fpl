@@ -175,16 +175,32 @@ if connection:
         if "selected_teams" not in st.session_state:
             st.session_state.selected_teams = all_teams.to_list()
         selected_teams = st.sidebar.multiselect(
-            "Select Teams", all_teams, default=st.session_state.selected_teams, key="selected_teams", on_change=on_team_change
+            "Select Teams",
+            options=all_teams,
+            default=None,
+            key="selected_teams",
+            on_change=on_team_change
         )
+
+        # Use the session state value if the multiselect is empty
+        if not selected_teams:
+            selected_teams = st.session_state.selected_teams
 
         # Position selection with on_change callback
         all_positions = df_selected_season["position"].unique().sort()
         if "selected_positions" not in st.session_state:
             st.session_state.selected_positions = all_positions.to_list()
         selected_positions = st.sidebar.multiselect(
-            "Select Positions", all_positions, default=st.session_state.selected_positions, key="selected_positions", on_change=on_position_change
+            "Select Positions",
+            options=all_positions,
+            default=None,
+            key="selected_positions",
+            on_change=on_position_change
         )
+
+        # Use the session state value if the multiselect is empty
+        if not selected_positions:
+            selected_positions = st.session_state.selected_positions
 
         # Filter data based on user selection
         filtered_df = df_selected_season.filter(
