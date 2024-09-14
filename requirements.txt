@@ -18,3 +18,5 @@ sqlalchemy
 requests
 polars
 duckdb
+great_expectations
+streamlit
