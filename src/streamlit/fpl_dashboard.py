@@ -13,7 +13,7 @@ import plotly.graph_objects as go
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
-from src.streamlit.streamlit_utils import load_all_data, connect_to_postgres
+from src.streamlit.streamlit_utils import load_data, connect_to_postgres
 
 # load environment variables
 load_dotenv()
@@ -34,67 +34,67 @@ st.title("Fantasy Premier League Dashboard")
 
 if connection:
 
-    data, column_names = load_all_data(connection, "dbt_ohempel", "fact_player_performance")
+    data, column_names = load_data(connection, "dbt_ohempel", "fact_player_performance")
 
 
     # Define the schema based on your knowledge of the data types in each column
     schema = {
-        "player_performance_id": pl.Int64,
+        # "player_performance_id": pl.Int64,
+        "player_name": pl.Utf8,
         "season": pl.Utf8,
         "gameweek": pl.Int64,
-        "date": pl.Datetime,
-        "player_name": pl.Utf8,
-        "player_cost": pl.Float64,
-        "total_points": pl.Int64,
-        "position": pl.Utf8,
         "team": pl.Utf8,
         "opponent_team": pl.Utf8,
-        "team_a_score": pl.Int64,
-        "team_h_score": pl.Int64,
-        "was_home": pl.Boolean,
+        "position": pl.Utf8,
+        "player_cost": pl.Float64,
+        "total_points": pl.Int64,
+        # "date": pl.Datetime,
+        # "team_a_score": pl.Int64,
+        # "team_h_score": pl.Int64,
+        # "was_home": pl.Boolean,
         "goals_scored": pl.Int64,
         "assists": pl.Int64,
-        "bonus": pl.Int64,
-        "bps": pl.Int64,
+        # "bonus": pl.Int64,
+        # "bps": pl.Int64,
         "clean_sheets": pl.Boolean,
-        "creativity": pl.Float64,
-        "element": pl.Int64,
-        "xP": pl.Float64,
-        "expected_assists": pl.Float64,
-        "expected_goal_involvements": pl.Float64,
-        "expected_goals": pl.Float64,
-        "expected_goals_conceded": pl.Float64,
-        "goals_conceded": pl.Int64,
+        # "creativity": pl.Float64,
+        # "element": pl.Int64,
+        # "xP": pl.Float64,
+        # "expected_assists": pl.Float64,
+        # "expected_goal_involvements": pl.Float64,
+        # "expected_goals": pl.Float64,
+        # "expected_goals_conceded": pl.Float64,
+        # "goals_conceded": pl.Int64,
         "ict_index": pl.Float64,
-        "influence": pl.Float64,
-        "kickoff_time": pl.Datetime,
+        # "influence": pl.Float64,
         "minutes_played": pl.Int64,
-        "own_goals": pl.Int64,
-        "penalties_missed": pl.Int64,
-        "penalties_saved": pl.Int64,
-        "red_cards": pl.Int64,
-        "saves": pl.Int64,
-        "player_started": pl.Boolean,
-        "threat": pl.Float64,
-        "transfers_balance": pl.Int64,
-        "transfers_in": pl.Int64,
-        "transfers_out": pl.Int64,
+        "kickoff_time": pl.Datetime,
+        # "own_goals": pl.Int64,
+        # "penalties_missed": pl.Int64,
+        # "penalties_saved": pl.Int64,
+        # "red_cards": pl.Int64,
+        # "saves": pl.Int64,
+        # "player_started": pl.Boolean,
+        # "threat": pl.Float64,
+        # "transfers_balance": pl.Int64,
+        # "transfers_in": pl.Int64,
+        # "transfers_out": pl.Int64,
         "selected": pl.Int64,
-        "yellow_cards": pl.Int64,
-        "player_id": pl.Utf8,
-        "team_id": pl.Utf8,
-        "fixture_id": pl.Int64,
-        "gameweek_id": pl.Utf8,
-        "season_id": pl.Utf8,
-        "date_id": pl.Utf8,
-        "seasonal_fixture_id": pl.Int64
+        # "yellow_cards": pl.Int64,
+        # "player_id": pl.Utf8,
+        # "team_id": pl.Utf8,
+        # "fixture_id": pl.Int64,
+        # "gameweek_id": pl.Utf8,
+        # "season_id": pl.Utf8,
+        # "date_id": pl.Utf8,
+        # "seasonal_fixture_id": pl.Int64
     }
 
     # create a polars DataFrame from the data
     df = pl.DataFrame(
         data,
-        #schema=column_names,
         schema=schema,
+        orient="row",
         #infer_schema_length=5000
     )
 
@@ -369,4 +369,3 @@ else:
 
 # TODO Current optimal team based on points with the budget constraint
 
-# TODO Publish 
