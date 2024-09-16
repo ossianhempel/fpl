@@ -213,91 +213,25 @@ if connection:
         st.sidebar.write(f"Selected Teams: {', '.join(selected_teams)}")
         st.sidebar.write(f"Selected Positions: {', '.join(selected_positions)}")
 
+        # latest gameweek
+        latest_gameweek = filtered_df.select(pl.col("gameweek").max()).item()
+        st.write(f"Latest Gameweek: {latest_gameweek}")
+
+        # latest kickoff time
+        latest_kickoff_time = filtered_df.select(pl.col("kickoff_time").max()).item()
+
+        if latest_kickoff_time is not None:
+            st.write(f"Latest Kickoff Time: {latest_kickoff_time}")
+            
+            # if latest kickoff time is more than 1 week ago, print a message regarding the data freshness
+            if latest_kickoff_time < datetime.now() - timedelta(days=14):
+                st.warning("Data is more than 2 weeks old. Owner needs to update the data.")
+        else:
+            st.write("No kickoff time data available for the selected season.")
+
         if filtered_df.is_empty():
             st.warning("No data available for the current selection. Please adjust your filters.")
         else:
-            # latest gameweek
-            latest_gameweek = filtered_df.select(pl.col("gameweek").max()).item()
-            st.write(f"Latest Gameweek: {latest_gameweek}")
-
-            # latest kickoff time
-            latest_kickoff_time = filtered_df.select(pl.col("kickoff_time").max()).item()
-
-            if latest_kickoff_time is not None:
-                st.write(f"Latest Kickoff Time: {latest_kickoff_time}")
-                
-                # if latest kickoff time is more than 1 week ago, print a message regarding the data freshness
-                if latest_kickoff_time < datetime.now() - timedelta(days=14):
-                    st.warning("Data is more than 2 weeks old. Owner needs to update the data.")
-            else:
-                st.write("No kickoff time data available for the selected season.")
-
-            # function to create player chart
-            def create_player_chart(position: str, title: str):
-                top_players = (
-                    filtered_df.filter(pl.col("position") == position)
-                    .group_by("player_name")
-                    .agg(pl.sum("total_points"))
-                    .sort("total_points", descending=True)
-                    .head(10)
-                )
-                
-                fig = px.bar(
-                    top_players,
-                    x="player_name",
-                    y="total_points",
-                    title=title,
-                    labels={"player_name": "Player", "total_points": "Total Points"},
-                    text="total_points"
-                )
-                fig.update_traces(texttemplate="%{text:.0f}", textposition="outside")
-                fig.update_layout(
-                    xaxis_title="Player",
-                    yaxis_title="Total Points",
-                    xaxis_tickangle=45,
-                    uniformtext_minsize=8,
-                    uniformtext_mode="hide",
-                    height=500,  # Increase the height of the chart
-                    margin=dict(t=50, b=100)  # Adjust margins to accommodate labels
-                )
-                return fig
-
-            # create and display charts for each position
-            for position, title in [
-                ("DEF", "Top 10 Defenders"),
-                ("MID", "Top 10 Midfielders"),
-                ("FWD", "Top 10 Forwards"),
-                ("GK", "Top 10 Goalkeepers")
-            ]:
-                if position in selected_positions:
-                    st.plotly_chart(create_player_chart(position, title), use_container_width=True)
-
-            # teams chart
-            teams_points = (
-                filtered_df.group_by("team")
-                .agg(pl.sum("total_points"))
-                .sort("total_points", descending=True)
-            )
-            fig_teams_points = px.bar(
-                teams_points,
-                x="team",
-                y="total_points",
-                title="Teams Total Points",
-                labels={"team": "Team", "total_points": "Total Points"},
-                text="total_points"
-            )
-            fig_teams_points.update_traces(texttemplate="%{text:.0f}", textposition="outside")
-            fig_teams_points.update_layout(
-                xaxis_title="Team",
-                yaxis_title="Total Points",
-                xaxis_tickangle=45,
-                uniformtext_minsize=8,
-                uniformtext_mode="hide",
-                height=500,  # Increase the height of the chart
-                margin=dict(t=50, b=100)  # Adjust margins to accommodate labels
-            )
-            st.plotly_chart(fig_teams_points, use_container_width=True)
-
             # player comparison
             st.header("Player Comparison")
 
@@ -361,6 +295,75 @@ if connection:
             else:
                 st.warning("Please select at least one player for comparison.")
 
+
+
+            # function to create player chart
+            def create_player_chart(position: str, title: str):
+                top_players = (
+                    filtered_df.filter(pl.col("position") == position)
+                    .group_by("player_name")
+                    .agg(pl.sum("total_points"))
+                    .sort("total_points", descending=True)
+                    .head(10)
+                )
+                
+                fig = px.bar(
+                    top_players,
+                    x="player_name",
+                    y="total_points",
+                    title=title,
+                    labels={"player_name": "Player", "total_points": "Total Points"},
+                    text="total_points",
+                )
+                fig.update_traces(texttemplate="%{text:.0f}", textposition="outside")
+                fig.update_layout(
+                    xaxis_title="Player",
+                    yaxis_title="Total Points",
+                    xaxis_tickangle=45,
+                    uniformtext_minsize=8,
+                    uniformtext_mode="hide",
+                    height=500,  # Increase the height of the chart
+                    margin=dict(t=50, b=100)  # Adjust margins to accommodate labels
+                )
+                return fig
+
+            # create and display charts for each position
+            for position, title in [
+                ("DEF", "Top 10 Defenders"),
+                ("MID", "Top 10 Midfielders"),
+                ("FWD", "Top 10 Forwards"),
+                ("GK", "Top 10 Goalkeepers")
+            ]:
+                if position in selected_positions:
+                    st.plotly_chart(create_player_chart(position, title), use_container_width=True)
+
+            # teams chart
+            teams_points = (
+                filtered_df.group_by("team")
+                .agg(pl.sum("total_points"))
+                .sort("total_points", descending=True)
+            )
+            fig_teams_points = px.bar(
+                teams_points,
+                x="team",
+                y="total_points",
+                title="Teams Total Points",
+                labels={"team": "Team", "total_points": "Total Points"},
+                text="total_points",
+                color="total_points",
+            )
+            fig_teams_points.update_traces(texttemplate="%{text:.0f}", textposition="outside")
+            fig_teams_points.update_layout(
+                xaxis_title="Team",
+                yaxis_title="Total Points",
+                xaxis_tickangle=45,
+                uniformtext_minsize=8,
+                uniformtext_mode="hide",
+                height=500,  # Increase the height of the chart
+                margin=dict(t=50, b=100)  # Adjust margins to accommodate labels
+            )
+            st.plotly_chart(fig_teams_points, use_container_width=True)
+
     # Add a reset button to the sidebar
     st.sidebar.button("Reset Filters", on_click=reset_filters)
 
@@ -368,4 +371,3 @@ else:
     st.error("Failed to connect to the database")
 
 # TODO Current optimal team based on points with the budget constraint
-
