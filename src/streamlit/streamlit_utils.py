@@ -12,16 +12,22 @@ from src.utils import connect_to_postgres, query_postgres
 
 
 @st.cache_data
-def load_all_data(_connection, schema_name, table_name):
-    connection = _connection # tell streamlit to not cache connection
+def load_data(_connection, schema_name, table_name):
+    connection = _connection  # tell streamlit to not cache connection
     cursor = connection.cursor()
-    query = f"SELECT * FROM {schema_name}.{table_name}"
+    # Select only the necessary columns based on the dashboard requirements
+    columns = """
+        player_name, season, gameweek, team, opponent_team, position, player_cost,
+        total_points, goals_scored, assists, clean_sheets, ict_index, minutes_played, kickoff_time, selected
+    """
+    query = f"SELECT {columns} FROM {schema_name}.{table_name}"
     query_postgres(cursor, query)
     data = cursor.fetchall()
     column_names = [desc[0] for desc in cursor.description]
     cursor.close()
     connection.close()
     return data, column_names
+
 
 @st.cache_resource
 def connect_to_postgres(database, host, user, password, port):
