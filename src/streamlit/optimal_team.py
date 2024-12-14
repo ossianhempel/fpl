@@ -58,6 +58,8 @@ def select_optimal_team(df: pd.DataFrame, budget: float) -> pd.DataFrame:
 # - 'value': player's price per game
 
 # Set your budget, e.g., 100 million
+df = pd.DataFrame()
+
 budget = 100.0
 optimal_team = select_optimal_team(df, budget)
 
