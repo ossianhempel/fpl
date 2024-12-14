@@ -88,7 +88,7 @@ class TestFixturesIngestion:
             {'teams.csv': sample_teams_df}     # Second call for teams
         ]
         
-        ingestion = FixturesIngestion()
+        ingestion = FixturesIngestion(testing=True)
         df, teams_df = ingestion._initiate_data_ingestion()
         
         assert isinstance(df, pd.DataFrame)
@@ -97,7 +97,7 @@ class TestFixturesIngestion:
         assert len(teams_df) == len(sample_teams_df)
 
     def test_transform_and_dedupe_data(self, sample_fixtures_df, sample_teams_df):
-        ingestion = FixturesIngestion()
+        ingestion = FixturesIngestion(testing=True)
         transformed_df = ingestion._transform_and_dedupe_data(sample_fixtures_df, sample_teams_df)
         
         assert 'season' in transformed_df.columns
@@ -109,7 +109,7 @@ class TestFixturesIngestion:
     @patch('src.components.data_ingestion_fixtures.connect_to_postgres')
     def test_create_table_if_not_exists(self, mock_connect):
         mock_cursor = MagicMock()
-        ingestion = FixturesIngestion()
+        ingestion = FixturesIngestion(testing=True)
         ingestion._create_table_if_not_exists(mock_cursor, "test_table")
         
         assert mock_cursor.execute.called
@@ -120,14 +120,14 @@ class TestGameweeksIngestion:
     def test_initiate_data_ingestion(self, mock_fetch, sample_gameweeks_df):
         mock_fetch.return_value = {'test.csv': sample_gameweeks_df}
         
-        ingestion = GameweeksIngestion()
+        ingestion = GameweeksIngestion(testing=True)
         df = ingestion._initiate_data_ingestion()
         
         assert isinstance(df, pd.DataFrame)
         assert len(df) == len(sample_gameweeks_df)
 
     def test_transform_and_dedupe_data(self, sample_gameweeks_df):
-        ingestion = GameweeksIngestion()
+        ingestion = GameweeksIngestion(testing=True)
         transformed_df = ingestion._transform_and_dedupe_data(sample_gameweeks_df)
         
         assert 'season' in transformed_df.columns
@@ -139,7 +139,7 @@ class TestGameweeksIngestion:
     @patch('src.components.data_ingestion_gameweeks.connect_to_postgres')
     def test_create_table_if_not_exists(self, mock_connect):
         mock_cursor = MagicMock()
-        ingestion = GameweeksIngestion()
+        ingestion = GameweeksIngestion(testing=True)
         ingestion._create_table_if_not_exists(mock_cursor, "test_table")
         
         assert mock_cursor.execute.called
@@ -155,7 +155,7 @@ class TestIngestionIntegration:
         ]
         mock_connect.return_value = MagicMock()
         
-        ingestion = FixturesIngestion()
+        ingestion = FixturesIngestion(testing=True)
         ingestion.ingest_data()  # Should complete without errors
 
     @patch('src.components.data_ingestion_gameweeks.connect_to_postgres')
@@ -164,5 +164,5 @@ class TestIngestionIntegration:
         mock_fetch.return_value = {'test.csv': sample_gameweeks_df}
         mock_connect.return_value = MagicMock()
         
-        ingestion = GameweeksIngestion()
-        ingestion.ingest_data()  # Should complete without errors 
+        ingestion = GameweeksIngestion(testing=True)
+        ingestion.ingest_data()  # Should complete without errors

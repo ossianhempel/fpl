@@ -1,37 +1,50 @@
 import os
 import sys
+from typing import Optional
 import pandas as pd
 from dotenv import load_dotenv
 from dataclasses import dataclass
 from sqlalchemy import create_engine
-# from great_expectations.dataset import Dataset
 
 # Add the project's root directory to the PYTHONPATH
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 sys.path.append(project_root)
 from src.utils import connect_to_minio, fetch_all_from_minio, connect_to_postgres, query_postgres
 
-# TODO - refactor to use Polars
-
-# Load environment variables
-load_dotenv()
-
 @dataclass
 class DataIngestionConfig:
-    postgres_database: str = os.getenv('PG_DATABASE')
-    postgres_host: str = os.getenv('PG_HOST')
-    postgres_user: str = os.getenv('PG_USER')
-    postgres_password: str = os.getenv('PG_PASSWORD')
-    postgres_port: int = os.getenv('PG_PORT')
-    postgres_table_name: str = os.getenv('PG_TABLE_NAME_GW')
-    minio_endpoint: str = os.getenv('MINIO_ENDPOINT')
-    access_key: str = os.getenv('MINIO_ACCESS_KEY')
-    secret_key: str = os.getenv('MINIO_SECRET_KEY')
-    minio_bucket_name: str = os.getenv('MINIO_BUCKET_NAME')
+    """Configuration for data ingestion settings."""
+    postgres_database: Optional[str] = None
+    postgres_host: Optional[str] = None
+    postgres_user: Optional[str] = None
+    postgres_password: Optional[str] = None
+    postgres_port: Optional[int] = None
+    postgres_table_name: Optional[str] = None
+    minio_endpoint: Optional[str] = None
+    access_key: Optional[str] = None
+    secret_key: Optional[str] = None
+    testing: bool = False
+
+    def load_from_env(self) -> None:
+        """Load configuration from environment variables."""
+        self.postgres_database = os.getenv('PG_DATABASE')
+        self.postgres_host = os.getenv('PG_HOST')
+        self.postgres_user = os.getenv('PG_USER')
+        self.postgres_password = os.getenv('PG_PASSWORD')
+        self.postgres_port = int(os.getenv('PG_PORT', '0')) if os.getenv('PG_PORT') else None
+        self.postgres_table_name = os.getenv('PG_TABLE_NAME_GW')
+        self.minio_endpoint = os.getenv('MINIO_ENDPOINT')
+        self.access_key = os.getenv('MINIO_ACCESS_KEY')
+        self.secret_key = os.getenv('MINIO_SECRET_KEY')
 
 class DataIngestion:
-    def __init__(self):
-        self.config = DataIngestionConfig()
+    def __init__(self, testing: bool = False):
+        # Load environment variables
+        load_dotenv()
+        
+        # Initialize configuration
+        self.config = DataIngestionConfig(testing=testing)
+        self.config.load_from_env()
     
     def _initiate_data_ingestion(self):
         print("Entered the data ingestion component")
@@ -53,7 +66,7 @@ class DataIngestion:
             )
 
             if dfs is None or len(dfs) == 0:
-                raise Exception(f"No data fetched from bucket '{self.config.minio_bucket_name}'. Check if the bucket exists and contains objects.")
+                raise Exception("No data fetched from gameweeks bucket. Check if the bucket exists and contains objects.")
             
             combined_df = pd.concat(dfs.values(), ignore_index=True)
             print(f"Combined data: {combined_df.head(5)}")

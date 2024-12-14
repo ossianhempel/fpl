@@ -62,7 +62,7 @@ class DataIngestion:
             )
 
             if dfs is None or len(dfs) == 0:
-                raise Exception(f"No data fetched from bucket '{self.config.minio_bucket_name}'. Check if the bucket exists and contains objects.")
+                raise Exception("No data fetched from fixtures bucket. Check if the bucket exists and contains objects.")
             
             print(f"Number of dataframes fetched: {len(dfs)}")
             for key, df in dfs.items():
