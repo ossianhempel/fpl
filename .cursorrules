@@ -1,0 +1,36 @@
+(.venv) ➜  fpl git:(main) ✗ tree -L 2 -I 'venv|__pycache__|*.pyc|node_modules|*.egg-info|dist|build'
+
+.
+├── Dockerfile
+├── README.md
+├── add_season_to_teams.py
+├── artifacts
+│   ├── predicted_team_2024-08-14.csv
+│   ├── predicted_team_2024-08-16.csv
+│   └── predicted_team_2024-08-24.csv
+├── data
+│   ├── gameweeks
+│   └── teams
+├── fpl_data_modeling.drawio
+├── fpl_data_modeling.png
+├── inital_prediction.ipynb
+├── logs
+├── manual_upload_to_minio.py
+├── requirements.txt
+├── src
+│   ├── __init__.py
+│   ├── components
+│   ├── etl
+│   ├── exception.py
+│   ├── fastapi
+│   ├── logger.py
+│   ├── ml_pipeline
+│   ├── streamlit
+│   └── utils.py
+└── tests
+    ├── test_api.py
+    ├── test_placeholder.py
+    ├── test_streamlit_app.py
+    └── test_streamlit_utils.py
+
+13 directories, 19 files
