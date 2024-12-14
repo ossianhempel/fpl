@@ -121,7 +121,7 @@ class DataIngestion:
             # add season column
             def determine_season(date):
                 year = date.year
-                if date.month >= 7:  # July or later
+                if date.month >= 8:  # August or later
                     return f"{year}-{str(year + 1)[-2:]}"
                 else:  # Before July
                     return f"{year - 1}-{str(year)[-2:]}"
