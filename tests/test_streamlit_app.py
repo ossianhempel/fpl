@@ -16,5 +16,5 @@ def test_app():
     # Run with increased timeout (30 seconds)
     at.run(timeout=30)
 
-    # Clean up
-    at.clear()
+    # Verify no exceptions occurred
+    assert not at.exception
