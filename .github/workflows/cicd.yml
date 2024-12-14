@@ -55,7 +55,7 @@ jobs:
 
     - name: Build Docker Image
       run: |
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/fpl-fastapi:latest ./src/fastapi
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/fpl-fastapi:latest .
 
     - name: Push Docker Image to Registry
       run: |
