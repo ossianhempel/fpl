@@ -3,6 +3,7 @@ import pandas as pd
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 import sys
+import os
 from pathlib import Path
 
 # Add src to path for imports
@@ -12,6 +13,19 @@ if src_path not in sys.path:
 
 from src.components.data_ingestion_fixtures import DataIngestion as FixturesIngestion
 from src.components.data_ingestion_gameweeks import DataIngestion as GameweeksIngestion
+
+# Set up test environment variables
+@pytest.fixture(autouse=True)
+def setup_test_env():
+    """Set up test environment variables before each test"""
+    os.environ['MINIO_ENDPOINT'] = 'test-minio-endpoint'
+    os.environ['PG_TABLE_NAME_FIXTURES'] = 'stg_fixtures'
+    os.environ['PG_TABLE_NAME_GW'] = 'stg_gameweeks'
+    yield
+    # Clean up after tests
+    os.environ.pop('MINIO_ENDPOINT', None)
+    os.environ.pop('PG_TABLE_NAME_FIXTURES', None)
+    os.environ.pop('PG_TABLE_NAME_GW', None)
 
 # Fixtures test data
 @pytest.fixture

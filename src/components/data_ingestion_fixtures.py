@@ -27,15 +27,22 @@ class DataIngestionConfig:
     access_key: str = os.getenv('MINIO_ACCESS_KEY')
     secret_key: str = os.getenv('MINIO_SECRET_KEY')
     minio_bucket_name: str = os.getenv('MINIO_BUCKET_NAME')
+    testing: bool = False  # Add testing flag
 
 class DataIngestion:
-    def __init__(self):
+    def __init__(self, testing: bool = False):
         self.config = DataIngestionConfig()
+        self.config.testing = testing
     
     def _initiate_data_ingestion(self):
         print("Entered the data ingestion component")
-        assert self.config.minio_endpoint == "minio-yokckg4o44wg40wogk0okgks.65.108.88.160.sslip.io", "Did not find the Minio endpoint"
-        assert self.config.postgres_table_name == "stg_fixtures", f"Not correct table naming (should be 'stg_fixtures', received {self.config.postgres_table_name})"
+        # Validate configuration
+        if not self.config.minio_endpoint:
+            raise ValueError("MinIO endpoint not configured")
+        if not self.config.postgres_table_name:
+            raise ValueError("PostgreSQL table name not configured")
+        if self.config.postgres_table_name != "stg_fixtures":
+            raise ValueError(f"Invalid table name: expected 'stg_fixtures', got '{self.config.postgres_table_name}'")
         
         try:
             # fetch all data from MinIO

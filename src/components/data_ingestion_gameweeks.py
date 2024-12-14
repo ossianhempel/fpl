@@ -35,8 +35,13 @@ class DataIngestion:
     
     def _initiate_data_ingestion(self):
         print("Entered the data ingestion component")
-        assert self.config.minio_endpoint == "minio-yokckg4o44wg40wogk0okgks.65.108.88.160.sslip.io", "Did not find the Minio endpoint"
-        assert self.config.postgres_table_name == "stg_gameweeks", f"Not correct table naming (should be 'stg_gameweeks', received {self.config.postgres_table_name})"
+        # Validate configuration
+        if not self.config.minio_endpoint:
+            raise ValueError("MinIO endpoint not configured")
+        if not self.config.postgres_table_name:
+            raise ValueError("PostgreSQL table name not configured")
+        if self.config.postgres_table_name != "stg_gameweeks":
+            raise ValueError(f"Invalid table name: expected 'stg_gameweeks', got '{self.config.postgres_table_name}'")
         
         try:
             # Fetch all data from MinIO
