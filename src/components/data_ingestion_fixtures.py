@@ -117,6 +117,21 @@ class DataIngestion:
         """
         print("Transforming and deduplicating data...")
         try:
+            # Define critical columns that must have valid values
+            critical_columns = {
+                "event": "int",
+                "team_a": "int",
+                "team_h": "int",
+                "kickoff_time": "datetime"
+            }
+
+            # Filter out rows without valid kickoff_time first
+            initial_rows = len(df)
+            df = df.dropna(subset=['kickoff_time'])
+            rows_dropped = initial_rows - len(df)
+            if rows_dropped > 0:
+                print(f"Dropped {rows_dropped} rows without valid kickoff_time")
+
             # Define columns to transform and their target data types
             columns_to_transform = {
                 "event": "int",
@@ -137,13 +152,20 @@ class DataIngestion:
                 if column in df.columns:
                     try:
                         if dtype == "int":
-                            df[column] = pd.to_numeric(df[column], errors="raise").astype("Int64")
+                            df[column] = pd.to_numeric(df[column], errors="coerce").astype("Int64")
                         elif dtype == "float":
-                            df[column] = pd.to_numeric(df[column], errors="raise")
+                            df[column] = pd.to_numeric(df[column], errors="coerce")
                         elif dtype == "datetime":
-                            df[column] = pd.to_datetime(df[column], errors="raise")
+                            df[column] = pd.to_datetime(df[column], errors="coerce")
                     except (ValueError, TypeError) as e:
-                        raise Exception(f"Error converting column '{column}' to {dtype}: {str(e)}")
+                        print(f"Warning: Error converting column '{column}' to {dtype}: {str(e)}")
+
+            # Drop rows where critical columns have invalid values
+            rows_before = len(df)
+            df = df.dropna(subset=list(critical_columns.keys()))
+            rows_dropped = rows_before - len(df)
+            if rows_dropped > 0:
+                print(f"Dropped {rows_dropped} rows with invalid values in critical columns")
 
             # Convert boolean columns
             boolean_columns = ["finished", "finished_provisional", "started"]
@@ -160,7 +182,11 @@ class DataIngestion:
                 raise ValueError("Neither 'pulse_id' and 'code' nor 'code' alone found in the dataframe")
 
             # Remove duplicates
+            rows_before = len(df)
             df = df.drop_duplicates(subset=dedup_key, keep="last")
+            rows_dropped = rows_before - len(df)
+            if rows_dropped > 0:
+                print(f"Dropped {rows_dropped} duplicate rows")
             
             # Remove 'stats' column if it exists
             if "stats" in df.columns:
@@ -168,6 +194,8 @@ class DataIngestion:
             
             # Add season column
             def determine_season(date):
+                if pd.isna(date):
+                    return None
                 year = date.year
                 if date.month >= 8:  # August or later
                     return f"{year}-{str(year + 1)[-2:]}"
@@ -175,6 +203,9 @@ class DataIngestion:
                     return f"{year - 1}-{str(year)[-2:]}"
             
             df["season"] = df["kickoff_time"].apply(determine_season)
+            
+            # Drop rows with null season (should not happen since we filtered kickoff_time)
+            df = df.dropna(subset=['season'])
 
             # Rename columns
             df.rename(columns={
@@ -194,6 +225,13 @@ class DataIngestion:
             df = df.merge(teams_df, left_on=["team_a", "season"], right_on=["id", "season"], how="left")
             df = df.rename(columns={"name": "team_a_name"})
             df = df.drop(columns=["id"])
+            
+            # Drop rows where team mapping failed
+            rows_before = len(df)
+            df = df.dropna(subset=['team_h_name', 'team_a_name'])
+            rows_dropped = rows_before - len(df)
+            if rows_dropped > 0:
+                print(f"Dropped {rows_dropped} rows with invalid team mappings")
             
             return df
         except Exception as e:

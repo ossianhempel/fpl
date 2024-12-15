@@ -174,11 +174,45 @@ def test_complete_ingestion_process(mock_engine, mock_postgres, data_ingestion, 
 
 def test_transform_with_incorrect_data_types(data_ingestion, fixtures_data, teams_data):
     """Test transformation with incorrect data types."""
+    # Create a copy with invalid data in critical columns
     df_fixtures = fixtures_data.copy()
     df_fixtures['event'] = 'invalid_int'
-    with pytest.raises(Exception) as excinfo:
-        data_ingestion._transform_and_dedupe_data(df_fixtures, teams_data)
-    assert "error transforming data" in str(excinfo.value).lower()
+    df_fixtures['team_h'] = 'not_a_team_id'
+    df_fixtures['team_a'] = 'not_a_team_id'
+    df_fixtures['kickoff_time'] = 'not_a_date'
+    
+    # Also add some invalid data in non-critical columns
+    df_fixtures['team_h_score'] = 'not_a_score'
+    df_fixtures['team_a_score'] = 'not_a_score'
+    
+    # Transform the data
+    transformed_df = data_ingestion._transform_and_dedupe_data(df_fixtures, teams_data)
+    
+    # Verify that the DataFrame is empty since all critical columns have invalid values
+    assert len(transformed_df) == 0, "DataFrame should be empty after dropping rows with invalid critical columns"
+    
+def test_transform_with_partially_invalid_data(data_ingestion, fixtures_data, teams_data):
+    """Test transformation with some invalid data in non-critical columns."""
+    # Create a copy with invalid data only in non-critical columns
+    df_fixtures = fixtures_data.copy()
+    df_fixtures['team_h_score'] = 'not_a_score'
+    df_fixtures['team_a_score'] = 'not_a_score'
+    
+    # Transform the data
+    transformed_df = data_ingestion._transform_and_dedupe_data(df_fixtures, teams_data)
+    
+    # Verify that the DataFrame is not empty (critical columns are still valid)
+    assert len(transformed_df) > 0, "DataFrame should not be empty when only non-critical columns have invalid values"
+    
+    # Verify that invalid values were coerced to NaN
+    assert transformed_df['team_h_score'].isna().all(), "Invalid score values should be coerced to NaN"
+    assert transformed_df['team_a_score'].isna().all(), "Invalid score values should be coerced to NaN"
+    
+    # Verify that critical columns are not null
+    assert not transformed_df['gameweek'].isna().any(), "gameweek should not contain NaN values"
+    assert not transformed_df['team_h'].isna().any(), "team_h should not contain NaN values"
+    assert not transformed_df['team_a'].isna().any(), "team_a should not contain NaN values"
+    assert not transformed_df['kickoff_time'].isna().any(), "kickoff_time should not contain NaN values"
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__]) 
