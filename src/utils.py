@@ -7,6 +7,7 @@ import io
 import pandas as pd
 import psycopg2
 from sqlalchemy import create_engine
+import csv
 
 # TODO - import most of these from my shared repo insteaD? 
 
@@ -164,7 +165,7 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
                 # First try with strict parsing but proper quoting settings
                 df = pd.read_csv(
                     data_stream,
-                    quoting=pd.io.common.QUOTE_MINIMAL,  # Handle quoted fields
+                    quoting=csv.QUOTE_MINIMAL,  # Use csv module constant
                     escapechar='\\',  # Allow escaping of quotes
                     encoding='utf-8'
                 )
@@ -175,7 +176,7 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
                 try:
                     df = pd.read_csv(
                         data_stream,
-                        quoting=pd.io.common.QUOTE_ALL,  # Quote all fields
+                        quoting=csv.QUOTE_ALL,  # Use csv module constant
                         escapechar='\\',  # Allow escaping of quotes
                         on_bad_lines='warn',  # Warn about bad lines but don't fail
                         encoding='utf-8',
@@ -186,7 +187,7 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
                     data_stream.seek(0)
                     df = pd.read_csv(
                         data_stream,
-                        quoting=pd.io.common.QUOTE_MINIMAL,
+                        quoting=csv.QUOTE_MINIMAL,  # Use csv module constant
                         escapechar='\\',
                         on_bad_lines='warn',
                         encoding='utf-8',
