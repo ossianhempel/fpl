@@ -162,75 +162,104 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
             # Convert bytes data to a pandas DataFrame with robust CSV parsing
             data_stream = io.BytesIO(data)
             
-            # First, try to determine the number of columns by reading the header
-            header_df = pd.read_csv(data_stream, nrows=0)
-            expected_columns = len(header_df.columns)
-            print(f"Expected {expected_columns} columns based on header in {obj.object_name}")
-            
-            # Reset stream position
-            data_stream.seek(0)
-            
             try:
-                # Try parsing with strict settings first
-                df = pd.read_csv(
-                    data_stream,
-                    quoting=csv.QUOTE_ALL,  # Quote all fields to handle embedded commas
-                    doublequote=True,  # Handle double quotes within quoted strings
-                    escapechar=None,  # Don't use escape characters to avoid confusion
-                    encoding='utf-8'
-                )
-                
-                # Validate number of columns
-                if len(df.columns) != expected_columns:
-                    raise ValueError(f"Column count mismatch: expected {expected_columns}, got {len(df.columns)}")
-                
-            except Exception as e:
-                print(f"Warning: Initial parsing failed for {obj.object_name}: {str(e)}")
-                print("Attempting to fix CSV data...")
+                # First try with minimal parsing to get header
+                header_df = pd.read_csv(data_stream, nrows=0)
+                expected_columns = len(header_df.columns)
+                print(f"Expected {expected_columns} columns based on header in {obj.object_name}")
                 
                 # Reset stream position
                 data_stream.seek(0)
+                raw_data = data.decode('utf-8').splitlines()
                 
-                # Read raw data and fix common CSV issues
-                raw_data = data.decode('utf-8')
+                if not raw_data:
+                    print(f"Empty file: {obj.object_name}")
+                    dataframes[obj.object_name] = pd.DataFrame(columns=header_df.columns)
+                    continue
                 
-                # Fix unquoted fields containing commas by wrapping them in quotes
+                header = raw_data[0].strip().split(',')
                 fixed_lines = []
-                for line in raw_data.split('\n'):
-                    if line.strip():  # Skip empty lines
-                        fields = line.split(',')
-                        if len(fields) != expected_columns:
-                            # Quote fields that might contain commas
-                            quoted_fields = [f'"{field.strip()}"' if ',' in field or ' ' in field else field.strip() 
-                                          for field in fields]
-                            line = ','.join(quoted_fields)
-                        fixed_lines.append(line)
+                
+                # Add the header as the first line
+                fixed_lines.append(','.join(header))
+                
+                # Process each data row
+                for i, line in enumerate(raw_data[1:], 1):
+                    if not line.strip():  # Skip empty lines
+                        continue
+                        
+                    fields = line.strip().split(',')
+                    
+                    if len(fields) != len(header):
+                        print(f"Line {i} has {len(fields)} fields (expected {len(header)}):")
+                        print(f"Original line: {line[:200]}...")
+                        
+                        # Try to fix common issues
+                        # 1. Handle boolean values in numeric fields
+                        fixed_fields = []
+                        skip_line = False
+                        
+                        for j, field in enumerate(fields):
+                            field = field.strip()
+                            if field == 'False' and j < len(fields) - 2:  # If 'False' appears too early
+                                skip_line = True
+                                break
+                            fixed_fields.append(field)
+                        
+                        if skip_line:
+                            print(f"Skipping corrupted line {i}")
+                            continue
+                            
+                        # If we still don't have the right number of fields, pad with empty strings
+                        while len(fixed_fields) < len(header):
+                            fixed_fields.append('')
+                        
+                        # Trim excess fields
+                        fixed_fields = fixed_fields[:len(header)]
+                        
+                        # Quote fields that contain commas or spaces
+                        quoted_fields = [
+                            f'"{field}"' if (',' in field or ' ' in field) and not (field.startswith('"') and field.endswith('"'))
+                            else field
+                            for field in fixed_fields
+                        ]
+                        
+                        line = ','.join(quoted_fields)
+                    
+                    fixed_lines.append(line)
+                
+                if not fixed_lines:
+                    print(f"No valid data lines in {obj.object_name}")
+                    dataframes[obj.object_name] = pd.DataFrame(columns=header_df.columns)
+                    continue
                 
                 # Create new data stream with fixed CSV
                 fixed_data = '\n'.join(fixed_lines)
                 fixed_stream = io.StringIO(fixed_data)
                 
-                # Try parsing the fixed data
+                # Parse the fixed data
                 df = pd.read_csv(
                     fixed_stream,
-                    quoting=csv.QUOTE_ALL,
-                    doublequote=True,
-                    escapechar=None,
-                    encoding='utf-8'
+                    engine='python',
+                    quoting=csv.QUOTE_MINIMAL,
+                    encoding='utf-8',
+                    escapechar='\\',
+                    na_values=['', 'None', 'null'],
+                    keep_default_na=True
                 )
                 
-                # Final validation
-                if len(df.columns) != expected_columns:
-                    print(f"Error: Could not fix column count in {obj.object_name}. Skipping file.")
-                    continue
-            
-            # Replace empty strings with None for consistency
-            df = df.replace(r'^\s*$', None, regex=True)
-            
-            # Store the validated DataFrame
-            dataframes[obj.object_name] = df
-            print(f"Successfully fetched and validated '{obj.object_name}' from bucket '{bucket_name}'")
-            print(f"DataFrame shape: {df.shape}")
+                # Replace empty strings with None for consistency
+                df = df.replace(r'^\s*$', None, regex=True)
+                
+                # Store the validated DataFrame
+                dataframes[obj.object_name] = df
+                print(f"Successfully processed '{obj.object_name}' from bucket '{bucket_name}'")
+                print(f"Final DataFrame shape: {df.shape}")
+                
+            except Exception as e:
+                print(f"Error processing {obj.object_name}: {str(e)}")
+                print("Full error details:", e)
+                continue
 
     except S3Error as e:
         print("S3 Error: ", e)
