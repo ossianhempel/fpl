@@ -145,11 +145,14 @@ def fetch_from_minio(endpoint, access_key, secret_key, object_name):
     
 def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
     client = connect_to_minio(endpoint, access_key, secret_key)
-
     if client is None:
-        print("Failed to connect to MinIO")
         return None
 
+    CRITICAL_COLUMNS = {
+        'gameweeks': ['GW', 'team', 'name'],
+        'teams': ['team', 'season']
+    }
+    critical_cols = CRITICAL_COLUMNS.get(bucket_name, [])
     dataframes = {}
 
     try:
@@ -158,114 +161,34 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
             response = client.get_object(bucket_name, obj.object_name)
             data = response.read()
             response.release_conn()
-            
-            # Convert bytes data to a pandas DataFrame with robust CSV parsing
-            data_stream = io.BytesIO(data)
-            
-            try:
-                # First try with minimal parsing to get header
-                header_df = pd.read_csv(data_stream, nrows=0)
-                expected_columns = len(header_df.columns)
-                print(f"Expected {expected_columns} columns based on header in {obj.object_name}")
-                
-                # Reset stream position
-                data_stream.seek(0)
-                raw_data = data.decode('utf-8').splitlines()
-                
-                if not raw_data:
-                    print(f"Empty file: {obj.object_name}")
-                    dataframes[obj.object_name] = pd.DataFrame(columns=header_df.columns)
-                    continue
-                
-                header = raw_data[0].strip().split(',')
-                fixed_lines = []
-                
-                # Add the header as the first line
-                fixed_lines.append(','.join(header))
-                
-                # Process each data row
-                for i, line in enumerate(raw_data[1:], 1):
-                    if not line.strip():  # Skip empty lines
-                        continue
-                        
-                    fields = line.strip().split(',')
-                    
-                    if len(fields) != len(header):
-                        print(f"Line {i} has {len(fields)} fields (expected {len(header)}):")
-                        print(f"Original line: {line[:200]}...")
-                        
-                        # Try to fix common issues
-                        # 1. Handle boolean values in numeric fields
-                        fixed_fields = []
-                        skip_line = False
-                        
-                        for j, field in enumerate(fields):
-                            field = field.strip()
-                            if field == 'False' and j < len(fields) - 2:  # If 'False' appears too early
-                                skip_line = True
-                                break
-                            fixed_fields.append(field)
-                        
-                        if skip_line:
-                            print(f"Skipping corrupted line {i}")
-                            continue
-                            
-                        # If we still don't have the right number of fields, pad with empty strings
-                        while len(fixed_fields) < len(header):
-                            fixed_fields.append('')
-                        
-                        # Trim excess fields
-                        fixed_fields = fixed_fields[:len(header)]
-                        
-                        # Quote fields that contain commas or spaces
-                        quoted_fields = [
-                            f'"{field}"' if (',' in field or ' ' in field) and not (field.startswith('"') and field.endswith('"'))
-                            else field
-                            for field in fixed_fields
-                        ]
-                        
-                        line = ','.join(quoted_fields)
-                    
-                    fixed_lines.append(line)
-                
-                if not fixed_lines:
-                    print(f"No valid data lines in {obj.object_name}")
-                    dataframes[obj.object_name] = pd.DataFrame(columns=header_df.columns)
-                    continue
-                
-                # Create new data stream with fixed CSV
-                fixed_data = '\n'.join(fixed_lines)
-                fixed_stream = io.StringIO(fixed_data)
-                
-                # Parse the fixed data
-                df = pd.read_csv(
-                    fixed_stream,
-                    engine='python',
-                    quoting=csv.QUOTE_MINIMAL,
-                    encoding='utf-8',
-                    escapechar='\\',
-                    na_values=['', 'None', 'null'],
-                    keep_default_na=True
-                )
-                
-                # Replace empty strings with None for consistency
-                df = df.replace(r'^\s*$', None, regex=True)
-                
-                # Store the validated DataFrame
-                dataframes[obj.object_name] = df
-                print(f"Successfully processed '{obj.object_name}' from bucket '{bucket_name}'")
-                print(f"Final DataFrame shape: {df.shape}")
-                
-            except Exception as e:
-                print(f"Error processing {obj.object_name}: {str(e)}")
-                print("Full error details:", e)
+
+            data_str = data.decode('utf-8', errors='replace').strip()
+            if not data_str:
+                dataframes[obj.object_name] = pd.DataFrame(columns=critical_cols)
                 continue
 
+            # read entire file into a df, skip bad lines
+            df = pd.read_csv(
+                io.StringIO(data_str),
+                engine='python',
+                quoting=csv.QUOTE_MINIMAL,
+                encoding='utf-8',
+                escapechar='\\',
+                na_values=['', 'None', 'null'],
+                keep_default_na=True,
+                on_bad_lines='skip'
+            )
+
+            # drop rows where any critical col is null
+            if critical_cols:
+                df = df.dropna(subset=critical_cols)
+
+            dataframes[obj.object_name] = df
     except S3Error as e:
-        print("S3 Error: ", e)
+        print(f"S3 Error: {e}")
         return None
     except Exception as e:
-        print("Error: ", e)
+        print(f"Error: {e}")
         return None
-    
+
     return dataframes
