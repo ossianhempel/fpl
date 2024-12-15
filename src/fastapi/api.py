@@ -58,8 +58,14 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
     """Upload file to the appropriate storage bucket"""
     temp_file_path = None
     try:
+        print(f"\nReceived file upload request:")  # Debug log
+        print(f"Filename: {file.filename}")
+        print(f"Content-Type: {file.content_type}")
+        
         # Save uploaded file temporarily
         temp_file_path = await save_upload_file(file)
+        print(f"Saved temporary file to: {temp_file_path}")  # Debug log
+        print(f"Temporary file size: {os.path.getsize(temp_file_path)} bytes")  # Debug log
         
         # Get MinIO client with required credentials
         endpoint = os.getenv("MINIO_ENDPOINT")
@@ -88,10 +94,24 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
         bucket_name = source.value
         object_name = get_object_name(source, file.filename)
         
-        print(f"Uploading {object_name} to bucket {bucket_name}")  # Debug log
+        print(f"\nFile processing details:")  # Debug log
+        print(f"Source: {source.value}")
+        print(f"Original filename: {file.filename}")
+        print(f"Target bucket: {bucket_name}")
+        print(f"Target object name: {object_name}")
         
         # Upload to MinIO with the client
         upload_to_minio(client, temp_file_path, bucket_name, object_name)
+        
+        # Verify upload
+        try:
+            stat = client.stat_object(bucket_name, object_name)
+            print(f"\nUpload verification:")  # Debug log
+            print(f"Object exists in MinIO: {object_name}")
+            print(f"Size in MinIO: {stat.size} bytes")
+            print(f"Last modified: {stat.last_modified}")
+        except Exception as e:
+            print(f"Warning: Could not verify upload: {str(e)}")
         
         return {
             "message": f"Successfully uploaded {object_name} to {bucket_name} bucket"
@@ -107,6 +127,7 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
         if temp_file_path and os.path.exists(temp_file_path):
             try:
                 os.unlink(temp_file_path)
+                print(f"\nCleanup: Removed temporary file: {temp_file_path}")  # Debug log
             except Exception as e:
                 print(f"Failed to cleanup temp file: {str(e)}")  # Debug log
 
