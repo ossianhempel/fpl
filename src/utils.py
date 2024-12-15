@@ -71,7 +71,8 @@ def upload_to_minio(client: Minio, file_path: str, destination_bucket: str, dest
         return
 
     bucket_name = destination_bucket
-    object_name = os.path.join(destination_folder_path, os.path.basename(file_path)).replace("\\", "/")
+    # Fix: Use destination_folder_path directly as the object name
+    object_name = destination_folder_path
 
     try:
         print(f"Checking bucket: {bucket_name}")  # Debug log
