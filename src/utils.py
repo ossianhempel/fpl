@@ -149,8 +149,8 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
         return None
 
     CRITICAL_COLUMNS = {
-        'gameweeks': ['GW', 'team', 'name'],
-        'teams': ['team', 'season']
+        'gameweeks': ['GW', 'team', 'name'],  # Critical columns for gameweeks data
+        'teams': ['name', 'id']  # Critical columns for teams data - 'name' is the team name, 'id' is the unique identifier
     }
     critical_cols = CRITICAL_COLUMNS.get(bucket_name, [])
     dataframes = {}
