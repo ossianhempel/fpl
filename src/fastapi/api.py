@@ -56,35 +56,59 @@ def get_ingestion_class(source: DataSource):
 @app.post("/upload/{source}")
 async def upload_data(source: DataSource, file: UploadFile = File(...)):
     """Upload file to the appropriate storage bucket"""
+    temp_file_path = None
     try:
         # Save uploaded file temporarily
         temp_file_path = await save_upload_file(file)
         
         # Get MinIO client with required credentials
+        endpoint = os.getenv("MINIO_ENDPOINT")
+        access_key = os.getenv("MINIO_ACCESS_KEY")
+        secret_key = os.getenv("MINIO_SECRET_KEY")
+        
+        if not all([endpoint, access_key, secret_key]):
+            raise HTTPException(
+                status_code=500,
+                detail="Missing MinIO credentials in environment variables"
+            )
+        
         client = connect_to_minio(
-            endpoint=os.getenv("MINIO_ENDPOINT"),
-            access_key=os.getenv("MINIO_ACCESS_KEY"),
-            secret_key=os.getenv("MINIO_SECRET_KEY")
+            endpoint=endpoint,
+            access_key=access_key,
+            secret_key=secret_key
         )
         
         if client is None:
-            raise HTTPException(status_code=500, detail="Failed to connect to MinIO")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to establish MinIO connection"
+            )
         
         # Determine bucket and object name
         bucket_name = source.value
         object_name = get_object_name(source, file.filename)
         
+        print(f"Uploading {object_name} to bucket {bucket_name}")  # Debug log
+        
         # Upload to MinIO with the client
         upload_to_minio(client, temp_file_path, bucket_name, object_name)
-        
-        # Cleanup the temporary file
-        os.unlink(temp_file_path)
         
         return {
             "message": f"Successfully uploaded {object_name} to {bucket_name} bucket"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        print(f"Upload error: {str(e)}")  # Debug log
+        raise HTTPException(
+            status_code=500,
+            detail=f"Upload failed: {str(e)}"
+        )
+    finally:
+        # Cleanup temporary file
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except Exception as e:
+                print(f"Failed to cleanup temp file: {str(e)}")  # Debug log
 
 @app.post("/ingest/{source}")
 async def ingest_data(source: DataSource, request: IngestionRequest):
