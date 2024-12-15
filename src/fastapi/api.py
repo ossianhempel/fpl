@@ -10,7 +10,7 @@ from pathlib import Path
 project_root = str(Path(__file__).parent.parent)
 sys.path.append(project_root)
 
-from src.utils import upload_to_minio
+from src.utils import upload_to_minio, connect_to_minio
 from src.components.data_ingestion_fixtures import DataIngestion as FixturesIngestion
 from src.components.data_ingestion_gameweeks import DataIngestion as GameweeksIngestion
 
@@ -60,12 +60,22 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
         # Save uploaded file temporarily
         temp_file_path = await save_upload_file(file)
         
+        # Get MinIO client with required credentials
+        client = connect_to_minio(
+            endpoint=os.getenv("MINIO_ENDPOINT"),
+            access_key=os.getenv("MINIO_ACCESS_KEY"),
+            secret_key=os.getenv("MINIO_SECRET_KEY")
+        )
+        
+        if client is None:
+            raise HTTPException(status_code=500, detail="Failed to connect to MinIO")
+        
         # Determine bucket and object name
         bucket_name = source.value
         object_name = get_object_name(source, file.filename)
         
-        # Upload to MinIO
-        upload_to_minio(temp_file_path, bucket_name, object_name)
+        # Upload to MinIO with the client
+        upload_to_minio(client, temp_file_path, bucket_name, object_name)
         
         # Cleanup the temporary file
         os.unlink(temp_file_path)
