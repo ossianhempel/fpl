@@ -161,41 +161,76 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
             
             # Convert bytes data to a pandas DataFrame with robust CSV parsing
             data_stream = io.BytesIO(data)
+            
+            # First, try to determine the number of columns by reading the header
+            header_df = pd.read_csv(data_stream, nrows=0)
+            expected_columns = len(header_df.columns)
+            print(f"Expected {expected_columns} columns based on header in {obj.object_name}")
+            
+            # Reset stream position
+            data_stream.seek(0)
+            
             try:
-                # First try with strict parsing but proper quoting settings
+                # Try parsing with strict settings first
                 df = pd.read_csv(
                     data_stream,
-                    quoting=csv.QUOTE_MINIMAL,  # Use csv module constant
-                    escapechar='\\',  # Allow escaping of quotes
+                    quoting=csv.QUOTE_ALL,  # Quote all fields to handle embedded commas
+                    doublequote=True,  # Handle double quotes within quoted strings
+                    escapechar=None,  # Don't use escape characters to avoid confusion
                     encoding='utf-8'
                 )
-            except pd.errors.ParserError as e:
-                print(f"Warning: Parser error in file {obj.object_name}. Attempting with more flexible settings...")
-                # If strict parsing fails, try with more flexible settings
-                data_stream.seek(0)  # Reset stream position
-                try:
-                    df = pd.read_csv(
-                        data_stream,
-                        quoting=csv.QUOTE_ALL,  # Use csv module constant
-                        escapechar='\\',  # Allow escaping of quotes
-                        on_bad_lines='warn',  # Warn about bad lines but don't fail
-                        encoding='utf-8',
-                        engine='python'  # Use python engine which is more forgiving
-                    )
-                except Exception as inner_e:
-                    print(f"Error parsing {obj.object_name} with flexible settings. Trying with C engine and minimal quoting...")
-                    data_stream.seek(0)
-                    df = pd.read_csv(
-                        data_stream,
-                        quoting=csv.QUOTE_MINIMAL,  # Use csv module constant
-                        escapechar='\\',
-                        on_bad_lines='warn',
-                        encoding='utf-8',
-                        engine='c'  # Try C engine as last resort
-                    )
+                
+                # Validate number of columns
+                if len(df.columns) != expected_columns:
+                    raise ValueError(f"Column count mismatch: expected {expected_columns}, got {len(df.columns)}")
+                
+            except Exception as e:
+                print(f"Warning: Initial parsing failed for {obj.object_name}: {str(e)}")
+                print("Attempting to fix CSV data...")
+                
+                # Reset stream position
+                data_stream.seek(0)
+                
+                # Read raw data and fix common CSV issues
+                raw_data = data.decode('utf-8')
+                
+                # Fix unquoted fields containing commas by wrapping them in quotes
+                fixed_lines = []
+                for line in raw_data.split('\n'):
+                    if line.strip():  # Skip empty lines
+                        fields = line.split(',')
+                        if len(fields) != expected_columns:
+                            # Quote fields that might contain commas
+                            quoted_fields = [f'"{field.strip()}"' if ',' in field or ' ' in field else field.strip() 
+                                          for field in fields]
+                            line = ','.join(quoted_fields)
+                        fixed_lines.append(line)
+                
+                # Create new data stream with fixed CSV
+                fixed_data = '\n'.join(fixed_lines)
+                fixed_stream = io.StringIO(fixed_data)
+                
+                # Try parsing the fixed data
+                df = pd.read_csv(
+                    fixed_stream,
+                    quoting=csv.QUOTE_ALL,
+                    doublequote=True,
+                    escapechar=None,
+                    encoding='utf-8'
+                )
+                
+                # Final validation
+                if len(df.columns) != expected_columns:
+                    print(f"Error: Could not fix column count in {obj.object_name}. Skipping file.")
+                    continue
             
+            # Replace empty strings with None for consistency
+            df = df.replace(r'^\s*$', None, regex=True)
+            
+            # Store the validated DataFrame
             dataframes[obj.object_name] = df
-            print(f"Successfully fetched and parsed '{obj.object_name}' from bucket '{bucket_name}'")
+            print(f"Successfully fetched and validated '{obj.object_name}' from bucket '{bucket_name}'")
+            print(f"DataFrame shape: {df.shape}")
 
     except S3Error as e:
         print("S3 Error: ", e)
