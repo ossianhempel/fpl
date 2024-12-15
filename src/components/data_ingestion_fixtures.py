@@ -135,12 +135,15 @@ class DataIngestion:
             # Apply transformations
             for column, dtype in columns_to_transform.items():
                 if column in df.columns:
-                    if dtype == "int":
-                        df[column] = pd.to_numeric(df[column], errors="coerce").astype("Int64")
-                    elif dtype == "float":
-                        df[column] = pd.to_numeric(df[column], errors="coerce")
-                    elif dtype == "datetime":
-                        df[column] = pd.to_datetime(df[column], errors="coerce")
+                    try:
+                        if dtype == "int":
+                            df[column] = pd.to_numeric(df[column], errors="raise").astype("Int64")
+                        elif dtype == "float":
+                            df[column] = pd.to_numeric(df[column], errors="raise")
+                        elif dtype == "datetime":
+                            df[column] = pd.to_datetime(df[column], errors="raise")
+                    except (ValueError, TypeError) as e:
+                        raise Exception(f"Error converting column '{column}' to {dtype}: {str(e)}")
 
             # Convert boolean columns
             boolean_columns = ["finished", "finished_provisional", "started"]

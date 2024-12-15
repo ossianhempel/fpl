@@ -1,4 +1,4 @@
-(.venv) ➜  fpl git:(main) ✗ tree -L 2 -I 'venv|__pycache__|*.pyc|node_modules|*.egg-info|dist|build'
+tree -L 2 -I 'venv|__pycache__|*.pyc|node_modules|*.egg-info|dist|build'
 
 .
 ├── Dockerfile
@@ -29,11 +29,13 @@
 │   └── utils.py
 └── tests
     ├── test_api.py
+    ├── test_data
+    ├── test_data_ingestion.py
+    ├── test_data_ingestion_fixtures.py
+    ├── test_data_ingestion_gameweeks.py
     ├── test_placeholder.py
     ├── test_streamlit_app.py
     └── test_streamlit_utils.py
-
-13 directories, 19 files
 
 
 Fantasy Premier League (FPL) analytics and prediction system. Let me break down the key architectural components:

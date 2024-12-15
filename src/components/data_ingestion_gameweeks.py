@@ -122,34 +122,34 @@ class DataIngestion:
                 "value": "float",
                 "kickoff_time": "datetime",
                 "was_home": "bool",
-                "GW": "int",
-                "minutes": "int",
-                "total_points": "int",
-                "goals_scored": "int",
-                "assists": "int",
-                "clean_sheets": "int",
-                "goals_conceded": "int",
-                "own_goals": "int",
-                "penalties_saved": "int",
-                "penalties_missed": "int",
-                "yellow_cards": "int",
-                "red_cards": "int",
-                "saves": "int",
-                "bonus": "int",
-                "bps": "int",
-                "team_a_score": "int",
-                "team_h_score": "int",
-                "fixture": "int",
-                "selected": "int",
-                "transfers_balance": "int",
-                "transfers_in": "int",
-                "transfers_out": "int"
+                "GW": "Int64",
+                "minutes": "Int64",
+                "total_points": "Int64",
+                "goals_scored": "Int64",
+                "assists": "Int64",
+                "clean_sheets": "Int64",
+                "goals_conceded": "Int64",
+                "own_goals": "Int64",
+                "penalties_saved": "Int64",
+                "penalties_missed": "Int64",
+                "yellow_cards": "Int64",
+                "red_cards": "Int64",
+                "saves": "Int64",
+                "bonus": "Int64",
+                "bps": "Int64",
+                "team_a_score": "Int64",
+                "team_h_score": "Int64",
+                "fixture": "Int64",
+                "selected": "Int64",
+                "transfers_balance": "Int64",
+                "transfers_in": "Int64",
+                "transfers_out": "Int64"
             }
 
             # Apply transformations
             for column, dtype in columns_to_transform.items():
                 if column in df.columns:
-                    if dtype == "int":
+                    if dtype == "Int64":
                         df[column] = pd.to_numeric(df[column], errors="coerce").astype("Int64")
                     elif dtype == "float":
                         df[column] = pd.to_numeric(df[column], errors="coerce")
@@ -191,18 +191,20 @@ class DataIngestion:
             else:
                 print("Warning: 'player_started' column not found in the DataFrame")
 
-            # Identify opponent team
-            def identify_opponent_team(group):
-                if len(group["team"].unique()) == 2:
-                    group["opponent_team"] = group["team"].apply(
-                        lambda x: group["team"].unique()[1] if x == group["team"].unique()[0] else group["team"].unique()[0]
-                    )
-                else:
-                    group["opponent_team"] = None
-                return group
+            # Handle opponent team identification
+            if "opponent_team" not in df.columns:
+                # If opponent_team is not in input data, derive it
+                def identify_opponent_team(group):
+                    if len(group["team"].unique()) == 2:
+                        group["opponent_team"] = group["team"].apply(
+                            lambda x: group["team"].unique()[1] if x == group["team"].unique()[0] else group["team"].unique()[0]
+                        )
+                    else:
+                        group["opponent_team"] = None
+                    return group
 
-            # Update the groupby operation to avoid DeprecationWarning
-            df = df.groupby(["kickoff_time", "seasonal_fixture_id"], group_keys=False).apply(identify_opponent_team)
+                # Update the groupby operation to avoid DeprecationWarning
+                df = df.groupby(["kickoff_time", "seasonal_fixture_id"], group_keys=False).apply(identify_opponent_team)
 
             # Ensure data types match those in the PostgreSQL table
             df = df.astype({
