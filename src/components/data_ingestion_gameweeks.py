@@ -66,7 +66,7 @@ class DataIngestion:
         Raises:
             Exception: If there's an error during data ingestion or if no data is fetched.
         """
-        print("Initiating data ingestion...")
+        print("Initiating gameweeks data ingestion...")
         try:
             # Fetch gameweeks data
             dfs = fetch_all_from_minio(
@@ -103,12 +103,12 @@ class DataIngestion:
         Raises:
             Exception: If there's an error during data transformation
         """
-        print("Transforming and deduplicating data...")
+        print("Transforming and deduplicating gameweeks data...")
         try:
             # Create a copy of the DataFrame to avoid SettingWithCopyWarning
             df = df.copy()
 
-            # Handle GW field that might contain commas
+            # Handle GW field that might contain commas (we've seen values like 15,0 instead of just 15)
             if "GW" in df.columns:
                 # If GW is a string and contains commas, extract the first number
                 if df["GW"].dtype == "object":

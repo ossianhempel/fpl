@@ -66,7 +66,7 @@ class DataIngestion:
         Raises:
             Exception: If there's an error during data ingestion or if no data is fetched.
         """
-        print("Initiating data ingestion...")
+        print("Initiating fixtures data ingestion...")
         try:
             # Fetch fixtures data
             dfs = fetch_all_from_minio(
@@ -115,7 +115,7 @@ class DataIngestion:
         Raises:
             Exception: If there's an error during data transformation
         """
-        print("Transforming and deduplicating data...")
+        print("Transforming and deduplicating fixtures data...")
         try:
             # Define critical columns that must have valid values
             critical_columns = {
@@ -130,7 +130,7 @@ class DataIngestion:
             df = df.dropna(subset=['kickoff_time'])
             rows_dropped = initial_rows - len(df)
             if rows_dropped > 0:
-                print(f"Dropped {rows_dropped} rows without valid kickoff_time")
+                print(f"Dropped {rows_dropped} rows without valid kickoff_time in Fixtures")
 
             # Define columns to transform and their target data types
             columns_to_transform = {
