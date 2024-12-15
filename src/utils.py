@@ -148,11 +148,18 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
     if client is None:
         return None
 
+    # Define critical columns and their validation rules
     CRITICAL_COLUMNS = {
-        'gameweeks': ['GW', 'team', 'name'],  # Critical columns for gameweeks data
-        'teams': ['name', 'id']  # Critical columns for teams data - 'name' is the team name, 'id' is the unique identifier
+        'gameweeks': {
+            'columns': ['GW', 'team', 'name'],
+            'types': {'GW': 'int', 'team': 'str', 'name': 'str'}
+        },
+        'teams': {
+            'columns': ['name', 'id'],
+            'types': {'name': 'str', 'id': 'int'}
+        }
     }
-    critical_cols = CRITICAL_COLUMNS.get(bucket_name, [])
+
     dataframes = {}
 
     try:
@@ -163,30 +170,75 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
             response.release_conn()
 
             data_str = data.decode('utf-8', errors='replace').strip()
-            if not data_str:
-                dataframes[obj.object_name] = pd.DataFrame(columns=critical_cols)
+            
+            # Handle empty files with headers
+            if data_str.count('\n') <= 1:  # Only header row or empty
+                print(f"Empty file or header-only: {obj.object_name}")
+                # Create empty DataFrame with headers if present
+                if data_str:
+                    headers = data_str.split('\n')[0].split(',')
+                    dataframes[obj.object_name] = pd.DataFrame(columns=headers)
                 continue
 
-            # read entire file into a df, skip bad lines
-            df = pd.read_csv(
-                io.StringIO(data_str),
-                engine='python',
-                quoting=csv.QUOTE_MINIMAL,
-                encoding='utf-8',
-                escapechar='\\',
-                na_values=['', 'None', 'null'],
-                keep_default_na=True,
-                on_bad_lines='skip'
-            )
+            # First pass: read the data with pandas
+            try:
+                df = pd.read_csv(
+                    io.StringIO(data_str),
+                    engine='python',
+                    quoting=csv.QUOTE_MINIMAL,
+                    encoding='utf-8',
+                    escapechar='\\',
+                    na_values=['', 'None', 'null', 'nan', 'NaN', 'NAN'],
+                    keep_default_na=True,
+                    on_bad_lines='skip'
+                )
 
-            # drop rows where any critical col is null
-            if critical_cols:
-                df = df.dropna(subset=critical_cols)
+                if bucket_name in CRITICAL_COLUMNS:
+                    critical_info = CRITICAL_COLUMNS[bucket_name]
+                    critical_cols = critical_info['columns']
+                    col_types = critical_info['types']
 
-            dataframes[obj.object_name] = df
-    except S3Error as e:
-        print(f"S3 Error: {e}")
-        return None
+                    # Drop rows with any NULL values in critical columns
+                    df = df.dropna(subset=critical_cols)
+
+                    # Convert and validate types for critical columns
+                    for col, dtype in col_types.items():
+                        if col in df.columns:
+                            try:
+                                if dtype == 'int':
+                                    df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+                                elif dtype == 'str':
+                                    df[col] = df[col].astype(str).replace({'nan': None, 'None': None})
+                                
+                                # Drop rows where conversion failed (resulted in NULL)
+                                df = df.dropna(subset=[col])
+                            except Exception as e:
+                                print(f"Error converting column {col} to {dtype}: {str(e)}")
+                                continue
+
+                    # Verify no NULL values in critical columns after conversion
+                    null_counts = df[critical_cols].isnull().sum()
+                    if null_counts.any():
+                        print(f"Found NULL values in critical columns after conversion:")
+                        print(null_counts[null_counts > 0])
+                        df = df.dropna(subset=critical_cols)
+
+                # Handle date columns specifically
+                date_columns = [col for col in df.columns if 'date' in col.lower()]
+                for date_col in date_columns:
+                    try:
+                        df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                        # Drop rows where date conversion failed
+                        if date_col in critical_cols:
+                            df = df.dropna(subset=[date_col])
+                    except Exception as e:
+                        print(f"Error converting date column {date_col}: {str(e)}")
+
+                dataframes[obj.object_name] = df
+            except Exception as e:
+                print(f"Error processing file {obj.object_name}: {str(e)}")
+                continue
+
     except Exception as e:
         print(f"Error: {e}")
         return None
