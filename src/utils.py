@@ -148,10 +148,10 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
     if client is None:
         return None
 
-    # Define critical columns and their validation rules
+    # remove 'opponent_team' from critical columns here
     CRITICAL_COLUMNS = {
         'gameweeks': {
-            'columns': ['GW', 'team', 'name'],
+            'columns': ['GW', 'team', 'name'],  # no opponent_team anymore
             'types': {'GW': 'int', 'team': 'str', 'name': 'str'}
         },
         'teams': {
@@ -171,16 +171,14 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
 
             data_str = data.decode('utf-8', errors='replace').strip()
             
-            # Handle empty files with headers
-            if data_str.count('\n') <= 1:  # Only header row or empty
+            # handle empty or header-only
+            if data_str.count('\n') <= 1:
                 print(f"Empty file or header-only: {obj.object_name}")
-                # Create empty DataFrame with headers if present
                 if data_str:
                     headers = data_str.split('\n')[0].split(',')
                     dataframes[obj.object_name] = pd.DataFrame(columns=headers)
                 continue
 
-            # First pass: read the data with pandas
             try:
                 df = pd.read_csv(
                     io.StringIO(data_str),
@@ -188,7 +186,7 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
                     quoting=csv.QUOTE_MINIMAL,
                     encoding='utf-8',
                     escapechar='\\',
-                    na_values=['', 'None', 'null', 'nan', 'NaN', 'NAN'],
+                    na_values=['', 'None', 'null', 'nan', 'NaN', 'NAN', 'False', 'TRUE', 'FALSE'],
                     keep_default_na=True,
                     on_bad_lines='skip'
                 )
@@ -198,41 +196,48 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
                     critical_cols = critical_info['columns']
                     col_types = critical_info['types']
 
-                    # Drop rows with any NULL values in critical columns
-                    df = df.dropna(subset=critical_cols)
+                    # only proceed if all critical columns exist
+                    missing_cols = [c for c in critical_cols if c not in df.columns]
+                    if missing_cols:
+                        print(f"File {obj.object_name} missing critical cols: {missing_cols}, will still process but drop invalid rows.")
+                        # if critical columns are missing entirely, we can't enforce them
+                        # just skip critical checks for them
+                        existing_crit = [c for c in critical_cols if c in df.columns]
+                    else:
+                        existing_crit = critical_cols
 
-                    # Convert and validate types for critical columns
+                    initial_rows = len(df)
+                    rows_dropped = {}
+
+                    # drop rows with NULL in existing critical columns
+                    if existing_crit:
+                        df = df.dropna(subset=existing_crit)
+                        rows_dropped['null_values'] = initial_rows - len(df)
+
+                    # convert types for the critical columns that actually exist
                     for col, dtype in col_types.items():
                         if col in df.columns:
                             try:
                                 if dtype == 'int':
-                                    df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+                                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                                    before = len(df)
+                                    df = df.dropna(subset=[col])
+                                    rows_dropped[f'conversion_{col}'] = before - len(df)
                                 elif dtype == 'str':
                                     df[col] = df[col].astype(str).replace({'nan': None, 'None': None})
-                                
-                                # Drop rows where conversion failed (resulted in NULL)
-                                df = df.dropna(subset=[col])
+                                    before = len(df)
+                                    df = df.dropna(subset=[col])
+                                    rows_dropped[f'conversion_{col}'] = before - len(df)
                             except Exception as e:
                                 print(f"Error converting column {col} to {dtype}: {str(e)}")
-                                continue
 
-                    # Verify no NULL values in critical columns after conversion
-                    null_counts = df[critical_cols].isnull().sum()
-                    if null_counts.any():
-                        print(f"Found NULL values in critical columns after conversion:")
-                        print(null_counts[null_counts > 0])
-                        df = df.dropna(subset=critical_cols)
-
-                # Handle date columns specifically
-                date_columns = [col for col in df.columns if 'date' in col.lower()]
-                for date_col in date_columns:
-                    try:
-                        df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                        # Drop rows where date conversion failed
-                        if date_col in critical_cols:
-                            df = df.dropna(subset=[date_col])
-                    except Exception as e:
-                        print(f"Error converting date column {date_col}: {str(e)}")
+                    total_dropped = sum(rows_dropped.values())
+                    if total_dropped > 0:
+                        print(f"\nRows dropped in {obj.object_name}:")
+                        for reason, count in rows_dropped.items():
+                            if count > 0:
+                                print(f"- {reason}: {count} rows")
+                        print(f"Final rows: {len(df)} (Started with {initial_rows})\n")
 
                 dataframes[obj.object_name] = df
             except Exception as e:
@@ -244,3 +249,4 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
         return None
 
     return dataframes
+
