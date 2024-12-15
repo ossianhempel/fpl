@@ -38,6 +38,8 @@ tree -L 2 -I 'venv|__pycache__|*.pyc|node_modules|*.egg-info|dist|build'
     └── test_streamlit_utils.py
 
 
+DO NOT REMOVE ANY COMMENTS OR DOCSTRINGS FROM THE CODE.
+
 Fantasy Premier League (FPL) analytics and prediction system. Let me break down the key architectural components:
 1. Core Components
 src/ contains the main application code organized into several key modules:
