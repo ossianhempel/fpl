@@ -108,6 +108,12 @@ class DataIngestion:
             # Create a copy of the DataFrame to avoid SettingWithCopyWarning
             df = df.copy()
 
+            # Handle GW field that might contain commas
+            if "GW" in df.columns:
+                # If GW is a string and contains commas, extract the first number
+                if df["GW"].dtype == "object":
+                    df["GW"] = df["GW"].apply(lambda x: str(x).split(",")[0] if pd.notnull(x) else x)
+
             # Define columns to transform and their target data types
             columns_to_transform = {
                 "xp": "float",

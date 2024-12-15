@@ -158,11 +158,43 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
             data = response.read()
             response.release_conn()
             
-            # Convert bytes data to a pandas DataFrame
+            # Convert bytes data to a pandas DataFrame with robust CSV parsing
             data_stream = io.BytesIO(data)
-            df = pd.read_csv(data_stream)
+            try:
+                # First try with strict parsing but proper quoting settings
+                df = pd.read_csv(
+                    data_stream,
+                    quoting=pd.io.common.QUOTE_MINIMAL,  # Handle quoted fields
+                    escapechar='\\',  # Allow escaping of quotes
+                    encoding='utf-8'
+                )
+            except pd.errors.ParserError as e:
+                print(f"Warning: Parser error in file {obj.object_name}. Attempting with more flexible settings...")
+                # If strict parsing fails, try with more flexible settings
+                data_stream.seek(0)  # Reset stream position
+                try:
+                    df = pd.read_csv(
+                        data_stream,
+                        quoting=pd.io.common.QUOTE_ALL,  # Quote all fields
+                        escapechar='\\',  # Allow escaping of quotes
+                        on_bad_lines='warn',  # Warn about bad lines but don't fail
+                        encoding='utf-8',
+                        engine='python'  # Use python engine which is more forgiving
+                    )
+                except Exception as inner_e:
+                    print(f"Error parsing {obj.object_name} with flexible settings. Trying with C engine and minimal quoting...")
+                    data_stream.seek(0)
+                    df = pd.read_csv(
+                        data_stream,
+                        quoting=pd.io.common.QUOTE_MINIMAL,
+                        escapechar='\\',
+                        on_bad_lines='warn',
+                        encoding='utf-8',
+                        engine='c'  # Try C engine as last resort
+                    )
+            
             dataframes[obj.object_name] = df
-            print(f"Fetched '{obj.object_name}' from bucket '{bucket_name}'")
+            print(f"Successfully fetched and parsed '{obj.object_name}' from bucket '{bucket_name}'")
 
     except S3Error as e:
         print("S3 Error: ", e)
