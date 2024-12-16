@@ -107,7 +107,7 @@ class DataIngestion:
         
         Args:
             df: The fixtures dataframe
-            teams_df: The teams dataframe
+            teams_df: The teams dataframe for mapping
         
         Returns:
             pd.DataFrame: Transformed and deduplicated fixtures dataframe
@@ -117,7 +117,10 @@ class DataIngestion:
         """
         print("Transforming and deduplicating fixtures data...")
         try:
-            # Define critical columns that must have valid values
+            # Create a copy of the DataFrame to avoid SettingWithCopyWarning
+            df = df.copy()
+
+            # Critical columns that must have valid values
             critical_columns = {
                 "event": "int",
                 "team_a": "int",
@@ -125,53 +128,68 @@ class DataIngestion:
                 "kickoff_time": "datetime"
             }
 
-            # Filter out rows without valid kickoff_time first
+            # First handle critical columns
             initial_rows = len(df)
-            df = df.dropna(subset=['kickoff_time'])
-            rows_dropped = initial_rows - len(df)
-            if rows_dropped > 0:
-                print(f"Dropped {rows_dropped} rows without valid kickoff_time in Fixtures")
+            rows_dropped = {}
 
-            # Define columns to transform and their target data types
+            # Convert and validate critical columns
+            for col, dtype in critical_columns.items():
+                if col not in df.columns:
+                    print(f"Warning: Critical column {col} missing from data")
+                    continue
+
+                try:
+                    if dtype == "int":
+                        # Replace 'False', 'TRUE', 'FALSE' with NaN
+                        df[col] = df[col].replace(['False', 'TRUE', 'FALSE'], pd.NA)
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                    elif dtype == "datetime":
+                        df[col] = pd.to_datetime(df[col], errors='coerce')
+                    
+                    before = len(df)
+                    df = df.dropna(subset=[col])
+                    rows_dropped[f'conversion_{col}'] = before - len(df)
+                except Exception as e:
+                    print(f"Error converting column {col} to {dtype}: {str(e)}")
+
+            # Define columns to transform and their target data types for non-critical columns
             columns_to_transform = {
-                "event": "int",
                 "id": "int",
-                "kickoff_time": "datetime",
                 "minutes": "int",
-                "team_a": "int",
                 "team_a_score": "float",
-                "team_h": "int",
                 "team_h_score": "float",
                 "team_h_difficulty": "int",
                 "team_a_difficulty": "int",
                 "pulse_id": "int"
             }
 
-            # Apply transformations
+            # Apply transformations to non-critical columns
             for column, dtype in columns_to_transform.items():
                 if column in df.columns:
                     try:
                         if dtype == "int":
-                            df[column] = pd.to_numeric(df[column], errors="coerce").astype("Int64")
+                            # Replace boolean-like values with NaN
+                            df[column] = df[column].replace(['False', 'TRUE', 'FALSE'], pd.NA)
+                            df[column] = pd.to_numeric(df[column], errors='coerce').astype('Int64')
                         elif dtype == "float":
-                            df[column] = pd.to_numeric(df[column], errors="coerce")
-                        elif dtype == "datetime":
-                            df[column] = pd.to_datetime(df[column], errors="coerce")
-                    except (ValueError, TypeError) as e:
-                        print(f"Warning: Error converting column '{column}' to {dtype}: {str(e)}")
+                            df[column] = df[column].replace(['False', 'TRUE', 'FALSE'], pd.NA)
+                            df[column] = pd.to_numeric(df[column], errors='coerce')
+                    except Exception as e:
+                        print(f"Warning: Error converting column {column} to {dtype}: {str(e)}")
+                        # For non-critical columns, we continue even if conversion fails
 
-            # Drop rows where critical columns have invalid values
-            rows_before = len(df)
-            df = df.dropna(subset=list(critical_columns.keys()))
-            rows_dropped = rows_before - len(df)
-            if rows_dropped > 0:
-                print(f"Dropped {rows_dropped} rows with invalid values in critical columns")
-
-            # Convert boolean columns
+            # Handle boolean columns
             boolean_columns = ["finished", "finished_provisional", "started"]
             for column in boolean_columns:
                 if column in df.columns:
-                    df[column] = df[column].astype(bool)
+                    try:
+                        # Convert various string representations to boolean
+                        df[column] = df[column].map({
+                            'True': True, 'true': True, 'TRUE': True, '1': True, 1: True,
+                            'False': False, 'false': False, 'FALSE': False, '0': False, 0: False
+                        })
+                    except Exception as e:
+                        print(f"Warning: Error converting column {column} to boolean: {str(e)}")
 
             # Determine deduplication key
             if "pulse_id" in df.columns and "code" in df.columns:
@@ -184,9 +202,7 @@ class DataIngestion:
             # Remove duplicates
             rows_before = len(df)
             df = df.drop_duplicates(subset=dedup_key, keep="last")
-            rows_dropped = rows_before - len(df)
-            if rows_dropped > 0:
-                print(f"Dropped {rows_dropped} duplicate rows")
+            rows_dropped['duplicates'] = rows_before - len(df)
             
             # Remove 'stats' column if it exists
             if "stats" in df.columns:
@@ -213,6 +229,9 @@ class DataIngestion:
                 "id": "seasonal_fixture_id"
             }, inplace=True)
             
+            # Ensure gameweek is Int64
+            df["gameweek"] = pd.to_numeric(df["gameweek"], errors='coerce').astype('Int64')
+            
             # Map team names
             teams_df = teams_df[["id", "name", "season"]]
             
@@ -229,9 +248,16 @@ class DataIngestion:
             # Drop rows where team mapping failed
             rows_before = len(df)
             df = df.dropna(subset=['team_h_name', 'team_a_name'])
-            rows_dropped = rows_before - len(df)
-            if rows_dropped > 0:
-                print(f"Dropped {rows_dropped} rows with invalid team mappings")
+            rows_dropped['team_mapping'] = rows_before - len(df)
+
+            # Log transformation results
+            total_dropped = sum(rows_dropped.values())
+            if total_dropped > 0:
+                print("\nRows dropped during transformation:")
+                for reason, count in rows_dropped.items():
+                    if count > 0:
+                        print(f"- {reason}: {count} rows")
+                print(f"Final rows: {len(df)} (Started with {initial_rows})\n")
             
             return df
         except Exception as e:

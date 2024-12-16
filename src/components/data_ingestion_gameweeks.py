@@ -108,13 +108,41 @@ class DataIngestion:
             # Create a copy of the DataFrame to avoid SettingWithCopyWarning
             df = df.copy()
 
-            # Handle GW field that might contain commas (we've seen values like 15,0 instead of just 15)
-            if "GW" in df.columns:
-                # If GW is a string and contains commas, extract the first number
-                if df["GW"].dtype == "object":
-                    df["GW"] = df["GW"].apply(lambda x: str(x).split(",")[0] if pd.notnull(x) else x)
+            # Critical columns that must have valid values
+            critical_columns = {
+                "GW": "int",
+                "team": "str",
+                "name": "str",
+                "kickoff_time": "datetime"
+            }
 
-            # Define columns to transform and their target data types
+            # First handle critical columns
+            initial_rows = len(df)
+            rows_dropped = {}
+
+            # Convert and validate critical columns
+            for col, dtype in critical_columns.items():
+                if col not in df.columns:
+                    print(f"Warning: Critical column {col} missing from data")
+                    continue
+
+                try:
+                    if dtype == "int":
+                        # Replace 'False', 'TRUE', 'FALSE' with NaN
+                        df[col] = df[col].replace(['False', 'TRUE', 'FALSE'], pd.NA)
+                        df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+                    elif dtype == "str":
+                        df[col] = df[col].astype(str).replace({'nan': None, 'None': None, 'FALSE': None, 'TRUE': None})
+                    elif dtype == "datetime":
+                        df[col] = pd.to_datetime(df[col], errors='coerce')
+                    
+                    before = len(df)
+                    df = df.dropna(subset=[col])
+                    rows_dropped[f'conversion_{col}'] = before - len(df)
+                except Exception as e:
+                    print(f"Error converting column {col} to {dtype}: {str(e)}")
+
+            # Define columns to transform and their target data types for non-critical columns
             columns_to_transform = {
                 "xp": "float",
                 "creativity": "float",
@@ -126,9 +154,6 @@ class DataIngestion:
                 "influence": "float",
                 "threat": "float",
                 "value": "float",
-                "kickoff_time": "datetime",
-                "was_home": "bool",
-                "GW": "int",
                 "minutes": "int",
                 "total_points": "int",
                 "goals_scored": "int",
@@ -152,23 +177,27 @@ class DataIngestion:
                 "transfers_out": "int"
             }
 
-            # Apply transformations
+            # Apply transformations to non-critical columns
             for column, dtype in columns_to_transform.items():
                 if column in df.columns:
-                    if dtype == "int":
-                        df[column] = pd.to_numeric(df[column], errors="coerce").astype("Int64")
-                    elif dtype == "float":
-                        df[column] = pd.to_numeric(df[column], errors="coerce")
-                    elif dtype == "datetime":
-                        df[column] = pd.to_datetime(df[column], errors="coerce")
-                    elif dtype == "bool":
-                        df[column] = df[column].astype(bool)
+                    try:
+                        if dtype == "int":
+                            # Replace boolean-like values with NaN
+                            df[column] = df[column].replace(['False', 'TRUE', 'FALSE'], pd.NA)
+                            df[column] = pd.to_numeric(df[column], errors='coerce').astype('Int64')
+                        elif dtype == "float":
+                            df[column] = df[column].replace(['False', 'TRUE', 'FALSE'], pd.NA)
+                            df[column] = pd.to_numeric(df[column], errors='coerce')
+                    except Exception as e:
+                        print(f"Warning: Error converting column {column} to {dtype}: {str(e)}")
 
             # Remove duplicates based on player, gameweek, and kickoff time
             df = df.drop_duplicates(subset=["name", "GW", "kickoff_time"], keep="last")
 
             # Add season column
             def determine_season(date):
+                if pd.isna(date):
+                    return None
                 year = date.year
                 if date.month >= 7:  # July or later
                     return f"{year}-{str(year + 1)[-2:]}"
@@ -177,7 +206,7 @@ class DataIngestion:
 
             df["season"] = df["kickoff_time"].apply(determine_season)
 
-            # Rename columns
+            # First rename columns before any operations that use the new names
             df.rename(columns={
                 "GW": "gameweek",
                 "name": "player_name",
@@ -187,45 +216,53 @@ class DataIngestion:
                 "fixture": "seasonal_fixture_id"
             }, inplace=True)
 
+            # Handle boolean columns including player_started
+            boolean_columns = ["was_home", "player_started"]
+            for column in boolean_columns:
+                if column in df.columns:
+                    try:
+                        # Convert various string representations to boolean
+                        df[column] = df[column].map({
+                            'True': True, 'true': True, 'TRUE': True, '1': True, 1: True, True: True,
+                            'False': False, 'false': False, 'FALSE': False, '0': False, 0: False, False: False
+                        })
+                        # Fill any remaining NaN values with False
+                        df[column] = df[column].fillna(False)
+                        # Ensure boolean type
+                        df[column] = df[column].astype('bool')
+                    except Exception as e:
+                        print(f"Warning: Error converting column {column} to boolean: {str(e)}")
+
             # Drop unnecessary columns
             if "round" in df.columns:
                 df = df.drop(columns=["round"])
 
-            # Convert player_started to boolean if it exists
-            if "player_started" in df.columns:
-                df["player_started"] = df["player_started"].astype(bool)
+            # Now we can safely use seasonal_fixture_id in groupby
+            if "seasonal_fixture_id" in df.columns:
+                # Identify opponent team
+                def identify_opponent_team(group):
+                    if len(group["team"].unique()) == 2:
+                        group["opponent_team"] = group["team"].apply(
+                            lambda x: group["team"].unique()[1] if x == group["team"].unique()[0] else group["team"].unique()[0]
+                        )
+                    else:
+                        group["opponent_team"] = None
+                    return group
+
+                # Update the groupby operation to avoid DeprecationWarning
+                df = df.groupby(["kickoff_time", "seasonal_fixture_id"], group_keys=False).apply(identify_opponent_team)
             else:
-                print("Warning: 'player_started' column not found in the DataFrame")
+                # If no seasonal_fixture_id, set opponent_team to None
+                df["opponent_team"] = None
 
-            # Identify opponent team
-            def identify_opponent_team(group):
-                if len(group["team"].unique()) == 2:
-                    group["opponent_team"] = group["team"].apply(
-                        lambda x: group["team"].unique()[1] if x == group["team"].unique()[0] else group["team"].unique()[0]
-                    )
-                else:
-                    group["opponent_team"] = None
-                return group
-
-            # Update the groupby operation to avoid DeprecationWarning
-            df = df.groupby(["kickoff_time", "seasonal_fixture_id"], group_keys=False).apply(identify_opponent_team)
-
-            # Ensure data types match those in the PostgreSQL table
-            df = df.astype({
-                "player_name": "str",
-                "player_cost": "float",
-                "total_points": "int",
-                "position": "str",
-                "season": "str",
-                "gameweek": "int",
-                "seasonal_fixture_id": "int",
-                "team": "str",
-                "opponent_team": "str",
-                "team_a_score": "int",
-                "team_h_score": "int",
-                "was_home": "bool",
-                "player_started": "bool"
-            })
+            # Log transformation results
+            total_dropped = sum(rows_dropped.values())
+            if total_dropped > 0:
+                print("\nRows dropped during transformation:")
+                for reason, count in rows_dropped.items():
+                    if count > 0:
+                        print(f"- {reason}: {count} rows")
+                print(f"Final rows: {len(df)} (Started with {initial_rows})\n")
 
             return df
         except Exception as e:

@@ -153,13 +153,29 @@ def test_complete_ingestion_process(mock_engine, mock_postgres, data_ingestion, 
         assert mock_conn.commit.called
         assert mock_engine.called
 
-def test_transform_with_incorrect_data_types(data_ingestion, gameweeks_data):
+def test_transform_with_incorrect_data_types(data_ingestion):
     """Test transformation with incorrect data types."""
-    df_gameweeks = gameweeks_data.copy()
-    df_gameweeks['GW'] = 'invalid_int'
-    with pytest.raises(Exception) as excinfo:
-        data_ingestion._transform_and_dedupe_data(df_gameweeks)
-    assert "error transforming data" in str(excinfo.value).lower()
+    # Create test data with invalid types
+    data = {
+        'GW': ['not_a_number', '2', '3'],
+        'team': [1, 2, 3],  # Should be string
+        'name': ['Player1', 'Player2', 'Player3'],
+        'kickoff_time': ['2023-08-01', '2023-08-02', 'not_a_date'],
+        'starts': ['not_a_bool', 'True', 'False']
+    }
+    df = pd.DataFrame(data)
+    
+    # Transform the data
+    transformed_df = data_ingestion._transform_and_dedupe_data(df)
+    
+    # Should only have one valid row (row index 1)
+    assert len(transformed_df) == 1, "Should only have one valid row after transformation"
+    
+    # Verify the types of the remaining row
+    assert pd.api.types.is_integer_dtype(transformed_df['gameweek'].dtype), "gameweek should be integer, was " + str(transformed_df['gameweek'].dtype)
+    assert pd.api.types.is_string_dtype(transformed_df['team'].dtype), "team should be string, was " + str(transformed_df['team'].dtype)
+    assert pd.api.types.is_string_dtype(transformed_df['player_name'].dtype), "player_name should be string, was " + str(transformed_df['player_name'].dtype)
+    assert pd.api.types.is_bool_dtype(transformed_df['player_started'].dtype), "player_started should be boolean, was " + str(transformed_df['player_started'].dtype)
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__]) 

@@ -148,18 +148,6 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
     if client is None:
         return None
 
-    # remove 'opponent_team' from critical columns here
-    CRITICAL_COLUMNS = {
-        'gameweeks': {
-            'columns': ['GW', 'team', 'name'],  # no opponent_team anymore
-            'types': {'GW': 'int', 'team': 'str', 'name': 'str'}
-        },
-        'teams': {
-            'columns': ['name', 'id'],
-            'types': {'name': 'str', 'id': 'int'}
-        }
-    }
-
     dataframes = {}
 
     try:
@@ -186,59 +174,10 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
                     quoting=csv.QUOTE_MINIMAL,
                     encoding='utf-8',
                     escapechar='\\',
-                    na_values=['', 'None', 'null', 'nan', 'NaN', 'NAN', 'False', 'TRUE', 'FALSE'],
+                    na_values=['', 'None', 'null', 'nan', 'NaN', 'NAN'],
                     keep_default_na=True,
                     on_bad_lines='skip'
                 )
-
-                if bucket_name in CRITICAL_COLUMNS:
-                    critical_info = CRITICAL_COLUMNS[bucket_name]
-                    critical_cols = critical_info['columns']
-                    col_types = critical_info['types']
-
-                    # only proceed if all critical columns exist
-                    missing_cols = [c for c in critical_cols if c not in df.columns]
-                    if missing_cols:
-                        print(f"File {obj.object_name} missing critical cols: {missing_cols}, will still process but drop invalid rows.")
-                        # if critical columns are missing entirely, we can't enforce them
-                        # just skip critical checks for them
-                        existing_crit = [c for c in critical_cols if c in df.columns]
-                    else:
-                        existing_crit = critical_cols
-
-                    initial_rows = len(df)
-                    rows_dropped = {}
-
-                    # drop rows with NULL in existing critical columns
-                    if existing_crit:
-                        df = df.dropna(subset=existing_crit)
-                        rows_dropped['null_values'] = initial_rows - len(df)
-
-                    # convert types for the critical columns that actually exist
-                    for col, dtype in col_types.items():
-                        if col in df.columns:
-                            try:
-                                if dtype == 'int':
-                                    df[col] = pd.to_numeric(df[col], errors='coerce')
-                                    before = len(df)
-                                    df = df.dropna(subset=[col])
-                                    rows_dropped[f'conversion_{col}'] = before - len(df)
-                                elif dtype == 'str':
-                                    df[col] = df[col].astype(str).replace({'nan': None, 'None': None})
-                                    before = len(df)
-                                    df = df.dropna(subset=[col])
-                                    rows_dropped[f'conversion_{col}'] = before - len(df)
-                            except Exception as e:
-                                print(f"Error converting column {col} to {dtype}: {str(e)}")
-
-                    total_dropped = sum(rows_dropped.values())
-                    if total_dropped > 0:
-                        print(f"\nRows dropped in {obj.object_name}:")
-                        for reason, count in rows_dropped.items():
-                            if count > 0:
-                                print(f"- {reason}: {count} rows")
-                        print(f"Final rows: {len(df)} (Started with {initial_rows})\n")
-
                 dataframes[obj.object_name] = df
             except Exception as e:
                 print(f"Error processing file {obj.object_name}: {str(e)}")
