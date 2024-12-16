@@ -1,0 +1,212 @@
+[
+  {
+    "name": "player_performance_id",
+    "type": "INTEGER",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "player_name",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "player_cost",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "total_points",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "position",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "season",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "gameweek",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "seasonal_fixture_id",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "opponent_team",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_a_score",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "team_h_score",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "was_home",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "goals_scored",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "assists",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "bonus",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "bps",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "clean_sheets",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "creativity",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "element",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "xp",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expected_assists",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expected_goal_involvements",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expected_goals",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "expected_goals_conceded",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "goals_conceded",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ict_index",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "influence",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "kickoff_time",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "minutes_played",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "own_goals",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "penalties_missed",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "penalties_saved",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "red_cards",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "saves",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "player_started",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "threat",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "transfers_balance",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "transfers_in",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "transfers_out",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "selected",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "yellow_cards",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  }
+]
