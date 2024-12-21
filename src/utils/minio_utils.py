@@ -39,7 +39,7 @@ def create_minio_client(endpoint: str, access_key: str, secret_key: str) -> Opti
         print(f"Unexpected error connecting to MinIO: {str(e)}")  # Debug log
         return None
     
-def upload_to_minio(client: Minio, file_path: str, destination_bucket: str, destination_folder_path: str=""):
+def upload_to_minio(client: Minio, file_path: str, destination_bucket: str, destination_folder_path: str="") -> None:
     """Upload to MinIO with detailed error logging"""
     if client is None:
         print("Failed to upload: No MinIO client provided")
