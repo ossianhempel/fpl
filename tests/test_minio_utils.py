@@ -122,12 +122,8 @@ def test_fetch_all_from_minio_handles_completely_empty_file():
         mock_response.release_conn = MagicMock()
         mock_client.get_object.return_value = mock_response
         
-        result = fetch_all_from_minio("test-endpoint", "test-key", "test-secret", "gameweeks")
-        
-        assert result is not None
-        assert isinstance(result, dict)
-        # A completely empty file should not be included in the results
-        assert "completely_empty.csv" not in result
+        result = fetch_all_from_minio("test-endpoint", "test-key", "test-secret", "test-bucket")
+        assert result is None
 
 def test_fetch_all_from_minio_handles_connection_error():
     """Test handling of connection errors"""
@@ -136,6 +132,34 @@ def test_fetch_all_from_minio_handles_connection_error():
         
         result = fetch_all_from_minio("test-endpoint", "test-key", "test-secret", "test-bucket")
         assert result is None
+
+def test_fetch_all_from_minio_handles_valid_files():
+    """Test handling of valid files"""
+    test_data = b"name,team,position\nAlice,TeamA,Forward\nBob,TeamB,Defender\n"
+    
+    with patch('src.utils.minio_utils.Minio') as mock_minio:
+        mock_client = MagicMock()
+        mock_minio.return_value = mock_client
+        
+        mock_client.list_buckets.return_value = [MagicMock(name='test-bucket')]
+        
+        mock_object = MagicMock()
+        mock_object.object_name = "valid.csv"
+        mock_client.list_objects.return_value = [mock_object]
+        
+        mock_response = MagicMock()
+        mock_response.read.return_value = test_data
+        mock_response.release_conn = MagicMock()
+        mock_client.get_object.return_value = mock_response
+        
+        result = fetch_all_from_minio("test-endpoint", "test-key", "test-secret", "test-bucket")
+        assert result is not None
+        assert isinstance(result, dict)
+        assert "valid.csv" in result
+        df = result["valid.csv"]
+        assert not df.empty
+        assert list(df.columns) == ["name", "team", "position"]
+
 
 # def test_fetch_all_from_minio_handles_malformed_data():
 #     """Test handling of malformed data"""

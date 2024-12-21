@@ -4,8 +4,10 @@ from minio.error import S3Error
 import io
 import pandas as pd
 import csv
+import mypy
+from typing import Optional, Dict
 
-def create_minio_client(endpoint, access_key, secret_key):
+def create_minio_client(endpoint: str, access_key: str, secret_key: str) -> Optional[Minio]:
     """Connect to MinIO with detailed error logging"""
     try:
         print(f"Attempting to connect to MinIO at endpoint: {endpoint}")  # Debug log
@@ -88,7 +90,7 @@ def upload_to_minio(client: Minio, file_path: str, destination_bucket: str, dest
         raise Exception(f"Upload error: {str(e)}")
 
 
-def fetch_from_minio(endpoint, access_key, secret_key, object_name):
+def fetch_from_minio(endpoint: str, access_key: str, secret_key: str, object_name: str) -> Optional[pd.DataFrame]:
     client = create_minio_client(endpoint, access_key, secret_key)
 
     if client is None:
@@ -115,48 +117,62 @@ def fetch_from_minio(endpoint, access_key, secret_key, object_name):
         print("Error: ", e)
         return None
     
-def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
+def fetch_all_from_minio(endpoint: str, access_key: str, secret_key: str, bucket_name: str) -> Optional[Dict[str, pd.DataFrame]]:
+    """
+    Fetch all CSV files from a MinIO bucket and return them as a dictionary of DataFrames.
+
+    Args:
+        endpoint (str): MinIO server endpoint.
+        access_key (str): Access key for MinIO.
+        secret_key (str): Secret key for MinIO.
+        bucket_name (str): Name of the bucket to fetch objects from.
+
+    Returns:
+        Optional[Dict[str, pd.DataFrame]]: A dictionary mapping object names to DataFrames,
+                                           or None if no dataframes are retrieved or the connection fails.
+    """
     client = create_minio_client(endpoint, access_key, secret_key)
     if client is None:
-        return None
+        print("Failed to connect to MinIO")
+        return None  # return None if connection fails
 
     dataframes = {}
 
     try:
         objects = client.list_objects(bucket_name, recursive=True)
         for obj in objects:
-            response = client.get_object(bucket_name, obj.object_name)
-            data = response.read()
-            response.release_conn()
-
-            data_str = data.decode('utf-8', errors='replace').strip()
-            
-            # handle empty or header-only
-            if data_str.count('\n') <= 1:
-                print(f"Empty file or header-only: {obj.object_name}")
-                if data_str:
-                    headers = data_str.split('\n')[0].split(',')
-                    dataframes[obj.object_name] = pd.DataFrame(columns=headers)
-                continue
-
             try:
-                df = pd.read_csv(
-                    io.StringIO(data_str),
-                    engine='python',
-                    quoting=csv.QUOTE_MINIMAL,
-                    encoding='utf-8',
-                    escapechar='\\',
-                    na_values=['', 'None', 'null', 'nan', 'NaN', 'NAN'],
-                    keep_default_na=True,
-                    on_bad_lines='skip'
-                )
-                dataframes[obj.object_name] = df
+                response = client.get_object(bucket_name, obj.object_name)
+                try:
+                    data = response.read()
+                    data_str = data.decode('utf-8', errors='replace').strip()
+                    
+                    # handle empty or header-only
+                    if data_str.count('\n') <= 1:
+                        print(f"Empty file or header-only: {obj.object_name}")
+                        if data_str:
+                            headers = data_str.split('\n')[0].split(',')
+                            dataframes[obj.object_name] = pd.DataFrame(columns=headers)
+                        continue
+
+                    # parse CSV into a DataFrame
+                    df = pd.read_csv(
+                        io.StringIO(data_str),
+                        engine='python',
+                        quoting=csv.QUOTE_MINIMAL,
+                        encoding='utf-8',
+                        escapechar='\\',
+                        na_values=['', 'None', 'null', 'nan', 'NaN', 'NAN'],
+                        keep_default_na=True,
+                        on_bad_lines='skip'
+                    )
+                    dataframes[obj.object_name] = df
+                finally:
+                    response.release_conn()
             except Exception as e:
-                print(f"Error processing file {obj.object_name}: {str(e)}")
-                continue
-
+                print(f"Error processing file {obj.object_name}: {e}")
     except Exception as e:
-        print(f"Error: {e}")
-        return None
+        print(f"Error fetching objects from bucket {bucket_name}: {e}")
+        return None  # return None if fetching objects fails
 
-    return dataframes
+    return dataframes if dataframes else None
