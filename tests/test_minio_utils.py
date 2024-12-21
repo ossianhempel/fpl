@@ -1,4 +1,3 @@
-# tests/test_minio_utils.py
 import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
@@ -7,25 +6,7 @@ import os
 from pathlib import Path
 import sys
 
-# Add src to path for imports
-src_path = str(Path(__file__).parent.parent)
-if src_path not in sys.path:
-    sys.path.append(src_path)
-
-from src.utils import fetch_all_from_minio
-
-@pytest.fixture
-def test_data_path():
-    """Return the path to test data directory"""
-    return os.path.join(os.path.dirname(__file__), "test_data")
-
-@pytest.fixture
-def mock_minio_client():
-    """Create a mock MinIO client"""
-    with patch('src.utils.Minio') as mock_minio:
-        mock_client = MagicMock()
-        mock_minio.return_value = mock_client
-        yield mock_client
+from src.utils.minio_utils import fetch_all_from_minio
 
 def test_fetch_all_from_minio_handles_real_gameweeks_data(test_data_path):
     """Test handling of real gameweeks data"""
@@ -33,7 +14,7 @@ def test_fetch_all_from_minio_handles_real_gameweeks_data(test_data_path):
     with open(test_file_path, 'rb') as f:
         test_data = f.read()
     
-    with patch('src.utils.Minio') as mock_minio:
+    with patch('src.utils.minio_utils.Minio') as mock_minio:
         mock_client = MagicMock()
         mock_minio.return_value = mock_client
         
@@ -74,7 +55,7 @@ def test_fetch_all_from_minio_handles_real_teams_data(test_data_path):
     with open(test_file_path, 'rb') as f:
         test_data = f.read()
     
-    with patch('src.utils.Minio') as mock_minio:
+    with patch('src.utils.minio_utils.Minio') as mock_minio:
         mock_client = MagicMock()
         mock_minio.return_value = mock_client
         
@@ -98,7 +79,7 @@ def test_fetch_all_from_minio_handles_empty_files():
     # Create a test file with only headers
     test_data = b"name,team,GW,position\n"
     
-    with patch('src.utils.Minio') as mock_minio:
+    with patch('src.utils.minio_utils.Minio') as mock_minio:
         mock_client = MagicMock()
         mock_minio.return_value = mock_client
         
@@ -126,7 +107,7 @@ def test_fetch_all_from_minio_handles_completely_empty_file():
     """Test handling of completely empty files"""
     test_data = b""
     
-    with patch('src.utils.Minio') as mock_minio:
+    with patch('src.utils.minio_utils.Minio') as mock_minio:
         mock_client = MagicMock()
         mock_minio.return_value = mock_client
         
@@ -150,7 +131,7 @@ def test_fetch_all_from_minio_handles_completely_empty_file():
 
 def test_fetch_all_from_minio_handles_connection_error():
     """Test handling of connection errors"""
-    with patch('src.utils.Minio') as mock_minio:
+    with patch('src.utils.minio_utils.Minio') as mock_minio:
         mock_minio.side_effect = Exception("Connection failed")
         
         result = fetch_all_from_minio("test-endpoint", "test-key", "test-secret", "test-bucket")

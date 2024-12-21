@@ -1,39 +1,11 @@
 import os
-import urllib3
 from minio import Minio
 from minio.error import S3Error
-from dotenv import load_dotenv
 import io
 import pandas as pd
-import psycopg2
-from sqlalchemy import create_engine
 import csv
 
-# TODO - import most of these from my shared repo insteaD? 
-
-def connect_to_postgres(database, host, user, password, port):
-    try:
-        connection = psycopg2.connect(
-            database=database,
-            host=host,
-            user=user,
-            password=password,
-            port=port
-        )
-        print('Connection to PG established, Connection object returned.')
-        return connection  # Return the connection object, not the cursor
-    except Exception as e:
-        print('Error: ', e)
-        return None
-
-def query_postgres(cursor, query):
-    cursor.execute(query)
-    cursor.connection.commit()
-    # cursor.close()
-    # cursor.connection.close()
-
-
-def connect_to_minio(endpoint, access_key, secret_key):
+def create_minio_client(endpoint, access_key, secret_key):
     """Connect to MinIO with detailed error logging"""
     try:
         print(f"Attempting to connect to MinIO at endpoint: {endpoint}")  # Debug log
@@ -64,7 +36,7 @@ def connect_to_minio(endpoint, access_key, secret_key):
     except Exception as e:
         print(f"Unexpected error connecting to MinIO: {str(e)}")  # Debug log
         return None
-
+    
 def upload_to_minio(client: Minio, file_path: str, destination_bucket: str, destination_folder_path: str=""):
     """Upload to MinIO with detailed error logging"""
     if client is None:
@@ -117,7 +89,7 @@ def upload_to_minio(client: Minio, file_path: str, destination_bucket: str, dest
 
 
 def fetch_from_minio(endpoint, access_key, secret_key, object_name):
-    client = connect_to_minio(endpoint, access_key, secret_key)
+    client = create_minio_client(endpoint, access_key, secret_key)
 
     if client is None:
         print("Failed to connect to MinIO")
@@ -144,7 +116,7 @@ def fetch_from_minio(endpoint, access_key, secret_key, object_name):
         return None
     
 def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
-    client = connect_to_minio(endpoint, access_key, secret_key)
+    client = create_minio_client(endpoint, access_key, secret_key)
     if client is None:
         return None
 
@@ -188,4 +160,3 @@ def fetch_all_from_minio(endpoint, access_key, secret_key, bucket_name=''):
         return None
 
     return dataframes
-
