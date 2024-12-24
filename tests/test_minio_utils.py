@@ -8,7 +8,7 @@ import sys
 
 from src.utils.minio_utils import fetch_all_from_minio
 
-def test_fetch_all_from_minio_handles_real_gameweeks_data(test_data_path):
+def test_fetch_all_from_minio_handles_real_gameweeks_data(test_data_path: str) -> None:
     """Test handling of real gameweeks data"""
     test_file_path = os.path.join(test_data_path, "test_merged_gw_24_25.csv")
     with open(test_file_path, 'rb') as f:
@@ -49,7 +49,7 @@ def test_fetch_all_from_minio_handles_real_gameweeks_data(test_data_path):
         # Verify expected columns exist
         assert all(col in df.columns for col in ['name', 'position', 'team', 'GW'])
 
-def test_fetch_all_from_minio_handles_real_teams_data(test_data_path):
+def test_fetch_all_from_minio_handles_real_teams_data(test_data_path: str) -> None:
     """Test handling of real teams data"""
     test_file_path = os.path.join(test_data_path, "test_teams_2019_20_with_season.csv")
     with open(test_file_path, 'rb') as f:
@@ -74,7 +74,7 @@ def test_fetch_all_from_minio_handles_real_teams_data(test_data_path):
         
         assert result is not None
 
-def test_fetch_all_from_minio_handles_empty_files():
+def test_fetch_all_from_minio_handles_empty_files() -> None:
     """Test handling of empty files with headers"""
     # Create a test file with only headers
     test_data = b"name,team,GW,position\n"
@@ -103,7 +103,7 @@ def test_fetch_all_from_minio_handles_empty_files():
         assert len(df) == 0
         assert list(df.columns) == ["name", "team", "GW", "position"]
 
-def test_fetch_all_from_minio_handles_completely_empty_file():
+def test_fetch_all_from_minio_handles_completely_empty_file() -> None:
     """Test handling of completely empty files"""
     test_data = b""
     
@@ -125,7 +125,7 @@ def test_fetch_all_from_minio_handles_completely_empty_file():
         result = fetch_all_from_minio("test-endpoint", "test-key", "test-secret", "test-bucket")
         assert result is None
 
-def test_fetch_all_from_minio_handles_connection_error():
+def test_fetch_all_from_minio_handles_connection_error() -> None:
     """Test handling of connection errors"""
     with patch('src.utils.minio_utils.Minio') as mock_minio:
         mock_minio.side_effect = Exception("Connection failed")
@@ -133,7 +133,7 @@ def test_fetch_all_from_minio_handles_connection_error():
         result = fetch_all_from_minio("test-endpoint", "test-key", "test-secret", "test-bucket")
         assert result is None
 
-def test_fetch_all_from_minio_handles_valid_files():
+def test_fetch_all_from_minio_handles_valid_files() -> None:
     """Test handling of valid files"""
     test_data = b"name,team,position\nAlice,TeamA,Forward\nBob,TeamB,Defender\n"
     
