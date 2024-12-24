@@ -2,34 +2,27 @@ import pytest
 import os
 import sys
 import pandas as pd
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch, Mock
 from datetime import datetime
 
 # Add the project's root directory to the PYTHONPATH
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-sys.path.append(project_root)
+# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+# sys.path.append(project_root)
 
 from src.components.data_ingestion_gameweeks import DataIngestion, DataIngestionConfig
 
-@pytest.fixture
-def gameweeks_data():
-    """Test fixture data for gameweeks."""
-    # Load and combine test data from both seasons
-    data_20_21 = pd.read_csv(os.path.join(project_root, "tests", "test_data", "test_merged_gw_20_21.csv"))
-    data_23_24 = pd.read_csv(os.path.join(project_root, "tests", "test_data", "test_merged_gw_23_24.csv"))
-    data = pd.concat([data_20_21, data_23_24], ignore_index=True)
-    return data
+
+
+# @pytest.fixture
+# def mock_minio_client():
+#     """Mock MinIO client for testing."""
+#     with patch("src.components.data_ingestion_gameweeks.create_minio_client") as mock_connect:
+#         mock_client = Mock()
+#         mock_connect.return_value = mock_client
+#         yield mock_client
 
 @pytest.fixture
-def mock_minio_client():
-    """Mock MinIO client for testing."""
-    with patch("src.components.data_ingestion_gameweeks.connect_to_minio") as mock_connect:
-        mock_client = Mock()
-        mock_connect.return_value = mock_client
-        yield mock_client
-
-@pytest.fixture
-def data_ingestion(mock_minio_client):
+def data_ingestion(mock_minio_client: MagicMock) -> DataIngestion:
     """DataIngestion instance for testing."""
     with patch.dict(os.environ, {
         "PG_DATABASE": "test_db",
@@ -44,7 +37,7 @@ def data_ingestion(mock_minio_client):
     }):
         return DataIngestion(testing=True)
 
-def test_config_initialization():
+def test_config_initialization() -> None:
     """Test configuration initialization."""
     config = DataIngestionConfig()
     assert config.testing is False
@@ -52,7 +45,7 @@ def test_config_initialization():
     config = DataIngestionConfig(testing=True)
     assert config.testing is True
 
-def test_transform_and_dedupe_data(data_ingestion, gameweeks_data):
+def test_transform_and_dedupe_data(data_ingestion: DataIngestion, gameweeks_data: pd.DataFrame) -> None:
     """Test data transformation and deduplication."""
     transformed_df = data_ingestion._transform_and_dedupe_data(gameweeks_data)
     
@@ -101,14 +94,14 @@ def test_transform_and_dedupe_data(data_ingestion, gameweeks_data):
     assert transformed_df["season"].nunique() == 2, "should have 2 seasons"
     assert transformed_df["season"].iloc[0] == "2020-21", "first season should be 2020-21"
 
-def test_transform_with_missing_columns(data_ingestion, gameweeks_data):
+def test_transform_with_missing_columns(data_ingestion: DataIngestion, gameweeks_data: pd.DataFrame) -> None:
     """Test transformation with missing columns."""
     df_gameweeks = gameweeks_data.drop(columns=["kickoff_time"])
     with pytest.raises(Exception) as excinfo:
         data_ingestion._transform_and_dedupe_data(df_gameweeks)
     assert "error transforming data" in str(excinfo.value).lower()
 
-def test_transform_with_duplicates(data_ingestion, gameweeks_data):
+def test_transform_with_duplicates(data_ingestion: DataIngestion, gameweeks_data: pd.DataFrame) -> None:
     """Test transformation with duplicate data."""
     df_gameweeks = pd.concat([gameweeks_data, gameweeks_data])
     transformed_df = data_ingestion._transform_and_dedupe_data(df_gameweeks)
@@ -117,13 +110,13 @@ def test_transform_with_duplicates(data_ingestion, gameweeks_data):
     original_transformed = data_ingestion._transform_and_dedupe_data(gameweeks_data)
     assert len(transformed_df) == len(original_transformed), "Duplicates should be removed"
 
-def test_validate_data(data_ingestion, gameweeks_data):
+def test_validate_data(data_ingestion: DataIngestion, gameweeks_data: pd.DataFrame) -> None:
     """Test data validation."""
     transformed_df = data_ingestion._transform_and_dedupe_data(gameweeks_data)
     data_ingestion._validate_data(transformed_df)  # Should not raise exceptions
 
 @patch("src.components.data_ingestion_gameweeks.fetch_all_from_minio")
-def test_initiate_data_ingestion(mock_fetch, data_ingestion, gameweeks_data):
+def test_initiate_data_ingestion(mock_fetch: MagicMock, data_ingestion: DataIngestion, gameweeks_data: pd.DataFrame) -> None:
     """Test data ingestion initiation."""
     mock_fetch.return_value = {"test_gameweeks.csv": gameweeks_data}
     
@@ -133,7 +126,12 @@ def test_initiate_data_ingestion(mock_fetch, data_ingestion, gameweeks_data):
 
 @patch("src.components.data_ingestion_gameweeks.connect_to_postgres")
 @patch("src.components.data_ingestion_gameweeks.create_engine")
-def test_complete_ingestion_process(mock_engine, mock_postgres, data_ingestion, gameweeks_data):
+def test_complete_ingestion_process(
+    mock_engine: Mock, 
+    mock_postgres: Mock, 
+    data_ingestion: DataIngestion, 
+    gameweeks_data: pd.DataFrame
+    ) -> None:
     """Test the complete ingestion process."""
     # Mock database connections
     mock_conn = Mock()
@@ -153,7 +151,7 @@ def test_complete_ingestion_process(mock_engine, mock_postgres, data_ingestion, 
         assert mock_conn.commit.called
         assert mock_engine.called
 
-def test_transform_with_incorrect_data_types(data_ingestion):
+def test_transform_with_incorrect_data_types(data_ingestion: DataIngestion) -> None:
     """Test transformation with incorrect data types."""
     # Create test data with invalid types
     data = {
