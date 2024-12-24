@@ -11,7 +11,9 @@ from minio import Minio
 # Add the project's root directory to the PYTHONPATH
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 sys.path.append(project_root)
-from src.utils import connect_to_minio, fetch_all_from_minio, connect_to_postgres, query_postgres
+
+from src.utils.postgres_utils import connect_to_postgres, query_postgres
+from src.utils.minio_utils import create_minio_client, fetch_all_from_minio
 
 # Load environment variables from .env file
 load_dotenv(os.path.join(project_root, ".env"))
@@ -50,7 +52,7 @@ class DataIngestion:
     def __init__(self, testing: bool = False):
         self.config = DataIngestionConfig(testing=testing)
         self.config.load_from_env()
-        self.client = connect_to_minio(
+        self.client = create_minio_client(
             self.config.minio_endpoint,
             self.config.access_key,
             self.config.secret_key
