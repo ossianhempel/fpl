@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 import csv
 from typing import Optional, Any
 
-def connect_to_postgres(database: str, host: str, user: str, password: str, port: str) -> Optional[connection]:
+def connect_to_postgres(database: str, host: str, user: str, password: str, port: int) -> Optional[connection]:
     try:
         connection = psycopg2.connect(
             database=database,
