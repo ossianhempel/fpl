@@ -25,3 +25,15 @@ def gameweeks_data() -> pd.DataFrame:
     data_23_24 = pd.read_csv(os.path.join("tests", "test_data", "test_merged_gw_23_24.csv"))
     data = pd.concat([data_20_21, data_23_24], ignore_index=True)
     return data
+
+@pytest.fixture
+def fixtures_data() -> pd.DataFrame:
+    """Test fixture data for fixtures."""
+    data = pd.read_csv(os.path.join("tests", "test_data", "test_fixtures_19_20.csv"))
+    return data
+
+@pytest.fixture
+def teams_data() -> pd.DataFrame:
+    """Test fixture data for teams."""
+    data = pd.read_csv(os.path.join("tests", "test_data", "test_teams_2019_20_with_season.csv"))
+    return data
