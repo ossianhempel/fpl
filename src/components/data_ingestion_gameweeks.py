@@ -9,7 +9,7 @@ from typing import Dict, Tuple, Optional
 from minio import Minio
 from datetime import date
 from psycopg2.extensions import connection
-from psycopg2.extensions import cursor as PgCursor
+from psycopg2.extensions import cursor as PgCursor # alias to avoid type conflation with cursor variable
 from sqlalchemy.engine import Engine
 
 # Add the project's root directory to the PYTHONPATH
