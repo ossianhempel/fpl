@@ -5,13 +5,7 @@ import pandas as pd
 from unittest.mock import MagicMock, patch, Mock
 from datetime import datetime
 
-# Add the project's root directory to the PYTHONPATH
-# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-# sys.path.append(project_root)
-
 from src.components.data_ingestion_gameweeks import DataIngestion, DataIngestionConfig
-
-
 
 # @pytest.fixture
 # def mock_minio_client():
@@ -35,15 +29,12 @@ def data_ingestion(mock_minio_client: MagicMock) -> DataIngestion:
         "MINIO_ACCESS_KEY": "test-key",
         "MINIO_SECRET_KEY": "test-secret"
     }):
-        return DataIngestion(testing=True)
+        return DataIngestion()
 
 def test_config_initialization() -> None:
     """Test configuration initialization."""
     config = DataIngestionConfig()
-    assert config.testing is False
-    
-    config = DataIngestionConfig(testing=True)
-    assert config.testing is True
+    assert config.postgres_database == "fpl"
 
 def test_transform_and_dedupe_data(data_ingestion: DataIngestion, gameweeks_data: pd.DataFrame) -> None:
     """Test data transformation and deduplication."""
