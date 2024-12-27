@@ -7,11 +7,17 @@ from sqlalchemy import create_engine
 import great_expectations as ge
 from typing import Dict, Tuple, Optional
 from minio import Minio
+from datetime import date
+from psycopg2.extensions import connection
+from psycopg2.extensions import cursor as PgCursor # alias to avoid type conflation with cursor variable
+from sqlalchemy.engine import Engine
 
 # Add the project's root directory to the PYTHONPATH
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 sys.path.append(project_root)
-from src.utils import connect_to_minio, fetch_all_from_minio, connect_to_postgres, query_postgres
+
+from src.utils.postgres_utils import connect_to_postgres, query_postgres
+from src.utils.minio_utils import create_minio_client, fetch_all_from_minio
 
 # Load environment variables from .env file
 load_dotenv(os.path.join(project_root, ".env"))
@@ -19,38 +25,25 @@ load_dotenv(os.path.join(project_root, ".env"))
 @dataclass
 class DataIngestionConfig:
     """Configuration for data ingestion settings."""
-    postgres_database: Optional[str] = None
-    postgres_host: Optional[str] = None
-    postgres_user: Optional[str] = None
-    postgres_password: Optional[str] = None
-    postgres_port: Optional[int] = None
-    postgres_table_name: Optional[str] = None
-    minio_endpoint: Optional[str] = None
-    access_key: Optional[str] = None
-    secret_key: Optional[str] = None
-    testing: bool = False
+    postgres_database: str = os.getenv("PG_DATABASE", "fpl")
+    postgres_host: str = os.getenv("PG_HOST", "65.108.88.160")
+    postgres_user: str = os.getenv("PG_USER", "ossian")
+    postgres_password: str = os.getenv("PG_PASSWORD", "password")
+    postgres_port: int = int(os.getenv("PG_PORT", 5436))
+    postgres_table_name: str = os.getenv("PG_TABLE_NAME_GW", "stg_gameweeks")
+    minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "minio-yok44444")
+    access_key: str = os.getenv("MINIO_ACCESS_KEY", "minio-fpl")
+    secret_key: str = os.getenv("MINIO_SECRET_KEY", "secret-key")
 
-    def load_from_env(self) -> None:
-        """Load configuration from environment variables."""
-        self.postgres_database = os.getenv("PG_DATABASE")
-        self.postgres_host = os.getenv("PG_HOST")
-        self.postgres_user = os.getenv("PG_USER")
-        self.postgres_password = os.getenv("PG_PASSWORD")
-        self.postgres_port = int(os.getenv("PG_PORT", "0")) if os.getenv("PG_PORT") else None
-        self.postgres_table_name = os.getenv("PG_TABLE_NAME_FIXTURES")
-        self.minio_endpoint = os.getenv("MINIO_ENDPOINT")
-        self.access_key = os.getenv("MINIO_ACCESS_KEY")
-        self.secret_key = os.getenv("MINIO_SECRET_KEY")
-
-        # Validate critical configuration
-        assert self.postgres_table_name == "stg_fixtures", f"Invalid table name: expected 'stg_fixtures', got '{self.postgres_table_name}'"
-        assert self.minio_endpoint is not None, "MinIO endpoint not configured"
+    def __post_init__(self) -> None:
+        """Validate critical configuration."""
+        assert self.postgres_table_name == "stg_gameweeks", f"Invalid table name: expected 'stg_gameweeks', got '{self.postgres_table_name}'"
+        assert self.minio_endpoint, "MinIO endpoint not configured"
 
 class DataIngestion:
-    def __init__(self, testing: bool = False):
-        self.config = DataIngestionConfig(testing=testing)
-        self.config.load_from_env()
-        self.client = connect_to_minio(
+    def __init__(self) -> None:
+        self.config = DataIngestionConfig()
+        self.client = create_minio_client(
             self.config.minio_endpoint,
             self.config.access_key,
             self.config.secret_key
@@ -75,6 +68,8 @@ class DataIngestion:
                 secret_key=self.config.secret_key,
                 bucket_name="fixtures"
             )
+            if dfs is None or len(dfs) == 0:
+                raise Exception("No data fetched from fixtures bucket. Check if the bucket exists and contains objects.")
 
             # Fetch teams data for mapping
             teams_dfs = fetch_all_from_minio(
@@ -83,9 +78,10 @@ class DataIngestion:
                 secret_key=self.config.secret_key,
                 bucket_name="teams"
             )
+            if teams_dfs is None or len(teams_dfs) == 0:
+                raise Exception("No data fetched from teams bucket. Check if the bucket exists and contains objects.")
 
-            if dfs is None or len(dfs) == 0:
-                raise Exception("No data fetched from fixtures bucket. Check if the bucket exists and contains objects.")
+
             
             print(f"Number of dataframes fetched: {len(dfs)}")
             for key, df in dfs.items():
@@ -209,7 +205,7 @@ class DataIngestion:
                 df = df.drop(columns=["stats"])
             
             # Add season column
-            def determine_season(date):
+            def determine_season(date: date) -> Optional[str]:
                 if pd.isna(date):
                     return None
                 year = date.year
@@ -263,7 +259,7 @@ class DataIngestion:
         except Exception as e:
             raise Exception(f"Error transforming data: {e}")
     
-    def _create_table_if_not_exists(self, cursor, table_name: str) -> None:
+    def _create_table_if_not_exists(self, cursor: PgCursor, table_name: str) -> None:
         """
         Create the target table in PostgreSQL if it doesn't already exist.
         
@@ -335,8 +331,9 @@ class DataIngestion:
         Raises:
             Exception: If there's an error during data ingestion
         """
-        conn = None
-        cursor = None
+        conn: Optional[connection] = None
+        cursor: Optional[PgCursor] = None
+
         try:
             # Fetch and transform data
             df, teams_df = self._initiate_data_ingestion()
@@ -353,6 +350,10 @@ class DataIngestion:
                 self.config.postgres_password,
                 self.config.postgres_port
             )
+
+            if conn is None:
+                raise Exception("Failed to establish a database connection.")
+            
             cursor = conn.cursor()
             
             # Create table if it doesn't exist
