@@ -194,5 +194,52 @@ def test_modified_column_behavior(data_ingestion: DataIngestion) -> None:
     assert pd.api.types.is_bool_dtype(transformed_df['modified'].dtype), "modified should be boolean"
     assert not transformed_df['modified'].any(), "all modified values should be False"
 
+def test_transform_with_different_schemas(data_ingestion: DataIngestion) -> None:
+    """Test transformation with data from different seasons having different schemas."""
+    # Create test data simulating different seasons
+    data_old = {
+        'GW': [1, 2],
+        'team': ['Team1', 'Team2'],
+        'name': ['Player1', 'Player2'],
+        'kickoff_time': ['2023-08-01', '2023-08-02'],
+        'starts': [True, False],  # old schema uses 'starts'
+        'was_home': [True, False]
+    }
+
+    data_new = {
+        'GW': [3, 4],
+        'team': ['Team3', 'Team4'],
+        'name': ['Player3', 'Player4'],
+        'kickoff_time': ['2023-08-03', '2023-08-04'],
+        'player_started': [True, False],  # new schema uses 'player_started'
+        'was_home': [True, False],
+        'modified': [False, False]  # new schema has 'modified'
+    }
+
+    # Create DataFrames
+    df_old = pd.DataFrame(data_old)
+    df_new = pd.DataFrame(data_new)
+    
+    # Combine the data
+    combined_df = pd.concat([df_old, df_new], ignore_index=True)
+    
+    # Transform the data
+    transformed_df = data_ingestion._transform_and_dedupe_data(combined_df)
+    
+    # Verify the transformation
+    assert len(transformed_df) == 4, "Should preserve all rows"
+    assert 'player_started' in transformed_df.columns, "Should have player_started column"
+    assert 'modified' in transformed_df.columns, "Should have modified column"
+    assert pd.api.types.is_bool_dtype(transformed_df['player_started']), "player_started should be boolean"
+    assert pd.api.types.is_bool_dtype(transformed_df['modified']), "modified should be boolean"
+    
+    # Check that old 'starts' data was properly converted to 'player_started'
+    assert transformed_df.iloc[0]['player_started'] == True, "First row should have player_started True"
+    assert transformed_df.iloc[1]['player_started'] == False, "Second row should have player_started False"
+    
+    # Check that all rows have modified column with proper values
+    assert not transformed_df['modified'].iloc[0:2].any(), "Old data should have modified=False"
+    assert not transformed_df['modified'].iloc[2:4].any(), "New data should preserve modified=False"
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__]) 
