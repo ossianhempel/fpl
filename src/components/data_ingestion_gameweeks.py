@@ -220,34 +220,35 @@ class DataIngestion:
                 "fixture": "seasonal_fixture_id"
             }, inplace=True)
 
+            # Remove any duplicate columns that might have been created during transformation
+            df = df.loc[:, ~df.columns.duplicated()]
+
             # Handle boolean columns including player_started and modified
             boolean_columns = ["was_home", "player_started", "modified"]
             for column in boolean_columns:
-                if column in df.columns:
-                    try:
-                        # Convert various string representations to boolean
-                        df[column] = df[column].map({
-                            'True': True, 'true': True, 'TRUE': True, '1': True, 1: True, True: True,
-                            'False': False, 'false': False, 'FALSE': False, '0': False, 0: False, False: False,
-                            'not_a_bool': False  # Handle invalid values
-                        }, na_action='ignore')
-                        # Fill any remaining NaN values with False
-                        df[column] = df[column].fillna(False)
-                        # Ensure boolean type
-                        df[column] = df[column].astype(bool)
-                    except Exception as e:
-                        print(f"Warning: Error converting column {column} to boolean: {str(e)}")
-                        # Set default value if conversion fails
-                        df[column] = False
-                else:
-                    # Add missing boolean columns with default False
+                # First ensure the column exists with default False
+                if column not in df.columns:
+                    print(f"Adding missing column {column} with default value False")
+                    df[column] = False
+                    continue
+
+                try:
+                    # Convert various string representations to boolean
+                    df[column] = df[column].replace({
+                        'True': True, 'true': True, 'TRUE': True, '1': True, 1: True, True: True,
+                        'False': False, 'false': False, 'FALSE': False, '0': False, 0: False, False: False,
+                        'not_a_bool': False, pd.NA: False, None: False  # Handle invalid values
+                    })
+                    # Ensure boolean type
+                    df[column] = df[column].astype(bool)
+                except Exception as e:
+                    print(f"Warning: Error converting column {column} to boolean: {str(e)}")
+                    # Set default value if conversion fails
                     df[column] = False
 
-            # Drop unnecessary columns and duplicates
+            # Drop unnecessary columns
             if "round" in df.columns:
                 df = df.drop(columns=["round"])
-            # Remove any duplicate columns that might have been created during transformation
-            df = df.loc[:, ~df.columns.duplicated()]
 
             # Now we can safely use seasonal_fixture_id in groupby
             if "seasonal_fixture_id" in df.columns:
