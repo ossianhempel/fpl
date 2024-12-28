@@ -4,7 +4,7 @@ from streamlit.testing.v1.app_test import AppTest
 import threading
 import psycopg2
 from typing import Generator, Any
-from psycopg2.extensions import connection as PgConnection
+from psycopg2.extensions import connection as PgConnection # rename to avoid variable conflict
 from src.utils.postgres_utils import connect_to_postgres
 
 @pytest.fixture(scope="function")
