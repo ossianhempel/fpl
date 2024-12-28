@@ -150,6 +150,11 @@
     "mode": "NULLABLE"
   },
   {
+    "name": "modified",
+    "type": "BOOLEAN",
+    "mode": "NULLABLE"
+  },
+  {
     "name": "own_goals",
     "type": "INTEGER",
     "mode": "NULLABLE"
