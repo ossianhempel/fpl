@@ -23,8 +23,16 @@ def gameweeks_data() -> pd.DataFrame:
     # Load and combine test data from both seasons
     data_20_21 = pd.read_csv(os.path.join("tests", "test_data", "test_merged_gw_20_21.csv"))
     data_23_24 = pd.read_csv(os.path.join("tests", "test_data", "test_merged_gw_23_24.csv"))
-    data = pd.concat([data_20_21, data_23_24], ignore_index=True)
-    return data
+    data_24_25 = pd.read_csv(os.path.join("tests", "test_data", "test_merged_gw_24_25.csv"), on_bad_lines='skip')
+    
+    # Add 'modified' column with default False to older data if it doesn't exist
+    for df in [data_20_21, data_23_24]:
+        if 'modified' not in df.columns:
+            df['modified'] = False
+    
+    # Combine all dataframes
+    combined_df = pd.concat([data_20_21, data_23_24, data_24_25], ignore_index=True)
+    return combined_df
 
 @pytest.fixture
 def fixtures_data() -> pd.DataFrame:
