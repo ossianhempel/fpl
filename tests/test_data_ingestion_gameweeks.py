@@ -135,17 +135,53 @@ def test_complete_ingestion_process(
     mock_postgres.return_value = mock_conn
     mock_conn.cursor.return_value = mock_cursor
     
-    # Mock MinIO data fetch
-    with patch("src.components.data_ingestion_gameweeks.fetch_all_from_minio") as mock_fetch:
-        mock_fetch.return_value = {"test_gameweeks.csv": gameweeks_data}
-        
-        # Execute ingestion
-        data_ingestion.ingest_data()
-        
-        # Verify database operations
-        assert mock_cursor.execute.called
-        assert mock_conn.commit.called
-        assert mock_engine.called
+    # Create a mock SQLAlchemy engine that properly handles to_sql
+    mock_engine_instance = Mock()
+    mock_connection = Mock()
+    mock_engine_instance.connect.return_value = mock_connection
+    mock_connection.execute.return_value.fetchall.return_value = []
+    mock_engine.return_value = mock_engine_instance
+    
+    # Mock pandas to_sql to avoid actual database operations
+    with patch('pandas.DataFrame.to_sql') as mock_to_sql:
+        # Mock MinIO data fetch
+        with patch("src.components.data_ingestion_gameweeks.fetch_all_from_minio") as mock_fetch:
+            mock_fetch.return_value = {"test_gameweeks.csv": gameweeks_data}
+            
+            # Execute ingestion
+            data_ingestion.ingest_data()
+            
+            # Verify database operations
+            assert mock_cursor.execute.called
+            assert mock_conn.commit.called
+            assert mock_engine.called
+            assert mock_to_sql.called
+            
+            # Verify critical columns exist and have correct types
+            transformed_df = data_ingestion._transform_and_dedupe_data(gameweeks_data)
+            
+            # Check required columns exist
+            required_columns = [
+                "player_name", "player_cost", "total_points", "position", "season",
+                "gameweek", "seasonal_fixture_id", "team", "opponent_team", "kickoff_time",
+                "was_home", "player_started", "modified"
+            ]
+            for col in required_columns:
+                assert col in transformed_df.columns, f"Required column {col} missing"
+            
+            # Check data types
+            assert pd.api.types.is_string_dtype(transformed_df["player_name"].dtype), "player_name should be string"
+            assert pd.api.types.is_numeric_dtype(transformed_df["player_cost"].dtype), "player_cost should be numeric"
+            assert pd.api.types.is_integer_dtype(transformed_df["total_points"].dtype), "total_points should be integer"
+            assert pd.api.types.is_string_dtype(transformed_df["position"].dtype), "position should be string"
+            assert pd.api.types.is_string_dtype(transformed_df["season"].dtype), "season should be string"
+            assert pd.api.types.is_integer_dtype(transformed_df["gameweek"].dtype), "gameweek should be integer"
+            assert pd.api.types.is_integer_dtype(transformed_df["seasonal_fixture_id"].dtype), "seasonal_fixture_id should be integer"
+            assert pd.api.types.is_string_dtype(transformed_df["team"].dtype), "team should be string"
+            assert pd.api.types.is_string_dtype(transformed_df["opponent_team"].dtype), "opponent_team should be string"
+            assert pd.api.types.is_bool_dtype(transformed_df["was_home"].dtype), "was_home should be boolean"
+            assert pd.api.types.is_bool_dtype(transformed_df["player_started"].dtype), "player_started should be boolean"
+            assert pd.api.types.is_bool_dtype(transformed_df["modified"].dtype), "modified should be boolean"
 
 def test_transform_with_incorrect_data_types(data_ingestion: DataIngestion) -> None:
     """Test transformation with incorrect data types."""
