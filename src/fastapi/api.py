@@ -5,12 +5,13 @@ from enum import Enum
 import tempfile
 import sys
 from pathlib import Path
+from typing import Type, Optional
 
 # Add the project's root directory to the PYTHONPATH
 project_root = str(Path(__file__).parent.parent)
 sys.path.append(project_root)
 
-from src.utils import upload_to_minio, connect_to_minio
+from src.utils.minio_utils import upload_to_minio, create_minio_client
 from src.components.data_ingestion_fixtures import DataIngestion as FixturesIngestion
 from src.components.data_ingestion_gameweeks import DataIngestion as GameweeksIngestion
 
@@ -34,6 +35,8 @@ class IngestionRequest(BaseModel):
 # Helper functions
 async def save_upload_file(file: UploadFile) -> str:
     """Save uploaded file to temporary location and return the path"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
         content = await file.read()
         temp_file.write(content)
@@ -44,9 +47,9 @@ def get_object_name(source: DataSource, original_filename: str) -> str:
     base_name = UPLOAD_BUCKETS.get(source.value)
     return original_filename if not base_name else f"{base_name}{os.path.splitext(original_filename)[1]}"
 
-def get_ingestion_class(source: DataSource):
+def get_ingestion_class(source: DataSource) -> Optional[Type[FixturesIngestion | GameweeksIngestion]]:
     """Get the appropriate ingestion class based on the source"""
-    ingestion_classes = {
+    ingestion_classes: dict[DataSource, Type[FixturesIngestion | GameweeksIngestion]] = {
         DataSource.FIXTURES: FixturesIngestion,
         DataSource.GAMEWEEKS: GameweeksIngestion
     }
@@ -54,9 +57,9 @@ def get_ingestion_class(source: DataSource):
 
 # API Endpoints
 @app.post("/upload/{source}")
-async def upload_data(source: DataSource, file: UploadFile = File(...)):
+async def upload_data(source: DataSource, file: UploadFile = File(...)) -> dict[str, str]:
     """Upload file to the appropriate storage bucket"""
-    temp_file_path = None
+    temp_file_path: Optional[str] = None
     try:
         print(f"\nReceived file upload request:")  # Debug log
         print(f"Filename: {file.filename}")
@@ -78,7 +81,7 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
                 detail="Missing MinIO credentials in environment variables"
             )
         
-        client = connect_to_minio(
+        client = create_minio_client(
             endpoint=endpoint,
             access_key=access_key,
             secret_key=secret_key
@@ -92,6 +95,8 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
         
         # Determine bucket and object name
         bucket_name = source.value
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
         object_name = get_object_name(source, file.filename)
         
         print(f"\nFile processing details:")  # Debug log
@@ -101,7 +106,7 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
         print(f"Target object name: {object_name}")
         
         # Upload to MinIO with the client
-        upload_to_minio(client, temp_file_path, bucket_name, object_name)
+        upload_to_minio(client=client, file_path=temp_file_path, destination_bucket=bucket_name, destination_folder_path=object_name)
         
         # Verify upload
         try:
@@ -132,7 +137,7 @@ async def upload_data(source: DataSource, file: UploadFile = File(...)):
                 print(f"Failed to cleanup temp file: {str(e)}")  # Debug log
 
 @app.post("/ingest/{source}")
-async def ingest_data(source: DataSource, request: IngestionRequest):
+async def ingest_data(source: DataSource, request: IngestionRequest) -> dict[str, str]:
     """Ingest data using the appropriate ingestion class"""
     if source != request.source:
         raise HTTPException(status_code=400, detail="Source mismatch")
@@ -152,7 +157,7 @@ async def ingest_data(source: DataSource, request: IngestionRequest):
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy"}
 
