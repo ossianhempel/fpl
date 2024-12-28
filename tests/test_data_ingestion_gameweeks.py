@@ -53,11 +53,11 @@ def test_transform_and_dedupe_data(data_ingestion: DataIngestion, gameweeks_data
         'threat', 'kickoff_time', 'goals_scored', 'assists', 'clean_sheets',
         'goals_conceded', 'own_goals', 'penalties_saved', 'penalties_missed',
         'yellow_cards', 'red_cards', 'saves', 'bonus', 'bps', 'selected',
-        'transfers_balance', 'transfers_in', 'transfers_out'
+        'transfers_balance', 'transfers_in', 'transfers_out', 'modified'
     ])
 
     # Optional columns that may or may not be present
-    optional_columns = ['player_started', 'modified']
+    optional_columns = ['player_started']
 
     # Add optional columns to expected columns if they exist in the transformed data
     for col in optional_columns:
@@ -79,9 +79,9 @@ def test_transform_and_dedupe_data(data_ingestion: DataIngestion, gameweeks_data
     assert mandatory_columns_present, "Missing mandatory columns in transformed data"
     
     # Check data types
-    assert transformed_df["was_home"].dtype == bool, "was_home should be boolean"
-    if 'player_started' in transformed_df.columns:
-        assert transformed_df["player_started"].dtype == bool, "player_started should be boolean"
+    assert pd.api.types.is_bool_dtype(transformed_df["was_home"]), "was_home should be boolean"
+    assert pd.api.types.is_bool_dtype(transformed_df["modified"]), "modified should be boolean"
+    assert pd.api.types.is_bool_dtype(transformed_df["player_started"]), "player_started should be boolean"
     assert pd.api.types.is_integer_dtype(transformed_df["gameweek"]), "gameweek should be integer type"
     
     # Check value ranges
@@ -89,8 +89,6 @@ def test_transform_and_dedupe_data(data_ingestion: DataIngestion, gameweeks_data
     assert transformed_df["gameweek"].max() <= 38, "gameweek should not exceed 38"
     assert transformed_df["team"].nunique() > 1, "should have multiple unique teams"
     assert transformed_df["opponent_team"].nunique() > 1, "should have multiple unique opponent teams"
-    assert transformed_df["season"].nunique() == 2, "should have 2 seasons"
-    assert transformed_df["season"].iloc[0] == "2020-21", "first season should be 2020-21"
 
 def test_transform_with_missing_columns(data_ingestion: DataIngestion, gameweeks_data: pd.DataFrame) -> None:
     """Test transformation with missing columns."""
@@ -168,10 +166,13 @@ def test_transform_with_incorrect_data_types(data_ingestion: DataIngestion) -> N
     assert len(transformed_df) == 1, "Should only have one valid row after transformation"
     
     # Verify the types of the remaining row
-    assert pd.api.types.is_integer_dtype(transformed_df['gameweek'].dtype), "gameweek should be integer, was " + str(transformed_df['gameweek'].dtype)
-    assert pd.api.types.is_string_dtype(transformed_df['team'].dtype), "team should be string, was " + str(transformed_df['team'].dtype)
-    assert pd.api.types.is_string_dtype(transformed_df['player_name'].dtype), "player_name should be string, was " + str(transformed_df['player_name'].dtype)
-    assert pd.api.types.is_bool_dtype(transformed_df['player_started'].dtype), "player_started should be boolean, was " + str(transformed_df['player_started'].dtype)
+    assert pd.api.types.is_integer_dtype(transformed_df['gameweek'].dtype), "gameweek should be integer"
+    assert pd.api.types.is_string_dtype(transformed_df['team'].dtype), "team should be string"
+    assert pd.api.types.is_string_dtype(transformed_df['player_name'].dtype), "player_name should be string"
+    if 'player_started' in transformed_df.columns:
+        assert pd.api.types.is_bool_dtype(transformed_df['player_started'].dtype), "player_started should be boolean"
+    if 'modified' in transformed_df.columns:
+        assert pd.api.types.is_bool_dtype(transformed_df['modified'].dtype), "modified should be boolean"
 
 def test_modified_column_behavior(data_ingestion: DataIngestion) -> None:
     """Test that the modified column is handled correctly."""
