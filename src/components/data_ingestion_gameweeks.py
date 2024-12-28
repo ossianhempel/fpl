@@ -101,22 +101,24 @@ class DataIngestion:
             # Create a copy of the DataFrame to avoid SettingWithCopyWarning
             df = df.copy()
 
-            # Add any missing columns with default values based on their types
-            expected_columns = {
-                "modified": ("boolean", False),
-                "player_started": ("boolean", False)
-            }
-            
-            for col, (dtype, default_value) in expected_columns.items():
-                if col not in df.columns:
-                    print(f"Adding missing column {col} with default value {default_value}")
-                    df[col] = default_value
+            # First rename columns before any operations
+            df.rename(columns={
+                "GW": "gameweek",
+                "name": "player_name",
+                "minutes": "minutes_played",
+                "value": "player_cost",
+                "starts": "player_started",
+                "fixture": "seasonal_fixture_id"
+            }, inplace=True)
+
+            # Remove any duplicate columns that might have been created
+            df = df.loc[:, ~df.columns.duplicated()]
 
             # Critical columns that must have valid values
             critical_columns = {
-                "GW": "int",
+                "gameweek": "int",
                 "team": "str",
-                "name": "str",
+                "player_name": "str",
                 "kickoff_time": "datetime"
             }
 
@@ -146,57 +148,24 @@ class DataIngestion:
                 except Exception as e:
                     print(f"Error converting column {col} to {dtype}: {str(e)}")
 
-            # Define columns to transform and their target data types for non-critical columns
-            columns_to_transform = {
-                "xp": "float",
-                "creativity": "float",
-                "expected_assists": "float",
-                "expected_goal_involvements": "float",
-                "expected_goals": "float",
-                "expected_goals_conceded": "float",
-                "ict_index": "float",
-                "influence": "float",
-                "threat": "float",
-                "value": "float",
-                "minutes": "int",
-                "total_points": "int",
-                "goals_scored": "int",
-                "assists": "int",
-                "clean_sheets": "int",
-                "goals_conceded": "int",
-                "own_goals": "int",
-                "penalties_saved": "int",
-                "penalties_missed": "int",
-                "yellow_cards": "int",
-                "red_cards": "int",
-                "saves": "int",
-                "bonus": "int",
-                "bps": "int",
-                "team_a_score": "int",
-                "team_h_score": "int",
-                "fixture": "int",
-                "selected": "int",
-                "transfers_balance": "int",
-                "transfers_in": "int",
-                "transfers_out": "int"
-            }
-
-            # Apply transformations to non-critical columns
-            for column, dtype in columns_to_transform.items():
-                if column in df.columns:
+            # Handle boolean columns
+            boolean_columns = ["was_home", "player_started", "modified"]
+            for column in boolean_columns:
+                # First ensure the column exists with default False
+                if column not in df.columns:
+                    print(f"Adding missing column {column} with default value False")
+                    df[column] = False
+                else:
                     try:
-                        if dtype == "int":
-                            # Replace boolean-like values with NaN
-                            df[column] = df[column].replace(['False', 'TRUE', 'FALSE'], pd.NA)
-                            df[column] = pd.to_numeric(df[column], errors='coerce').astype('Int64')
-                        elif dtype == "float":
-                            df[column] = df[column].replace(['False', 'TRUE', 'FALSE'], pd.NA)
-                            df[column] = pd.to_numeric(df[column], errors='coerce')
+                        # Convert various string representations to boolean
+                        df[column] = df[column].replace({
+                            'True': True, 'true': True, 'TRUE': True, '1': True, 1: True, True: True,
+                            'False': False, 'false': False, 'FALSE': False, '0': False, 0: False, False: False,
+                            'not_a_bool': False, pd.NA: False, None: False  # Handle invalid values
+                        }).fillna(False).astype(bool)
                     except Exception as e:
-                        print(f"Warning: Error converting column {column} to {dtype}: {str(e)}")
-
-            # Remove duplicates based on player, gameweek, and kickoff time
-            df = df.drop_duplicates(subset=["name", "GW", "kickoff_time"], keep="last")
+                        print(f"Warning: Error converting column {column} to boolean: {str(e)}")
+                        df[column] = False
 
             # Add season column
             def determine_season(date: date) -> Optional[str]:
@@ -210,47 +179,11 @@ class DataIngestion:
 
             df["season"] = df["kickoff_time"].apply(determine_season)
 
-            # First rename columns before any operations that use the new names
-            df.rename(columns={
-                "GW": "gameweek",
-                "name": "player_name",
-                "minutes": "minutes_played",
-                "value": "player_cost",
-                "starts": "player_started",
-                "fixture": "seasonal_fixture_id"
-            }, inplace=True)
-
-            # Remove any duplicate columns that might have been created during transformation
-            df = df.loc[:, ~df.columns.duplicated()]
-
-            # Handle boolean columns including player_started and modified
-            boolean_columns = ["was_home", "player_started", "modified"]
-            for column in boolean_columns:
-                # First ensure the column exists with default False
-                if column not in df.columns:
-                    print(f"Adding missing column {column} with default value False")
-                    df[column] = False
-                    continue
-
-                try:
-                    # Convert various string representations to boolean
-                    df[column] = df[column].replace({
-                        'True': True, 'true': True, 'TRUE': True, '1': True, 1: True, True: True,
-                        'False': False, 'false': False, 'FALSE': False, '0': False, 0: False, False: False,
-                        'not_a_bool': False, pd.NA: False, None: False  # Handle invalid values
-                    })
-                    # Ensure boolean type
-                    df[column] = df[column].astype(bool)
-                except Exception as e:
-                    print(f"Warning: Error converting column {column} to boolean: {str(e)}")
-                    # Set default value if conversion fails
-                    df[column] = False
-
             # Drop unnecessary columns
             if "round" in df.columns:
                 df = df.drop(columns=["round"])
 
-            # Now we can safely use seasonal_fixture_id in groupby
+            # Now handle opponent team
             if "seasonal_fixture_id" in df.columns:
                 # Identify opponent team
                 def identify_opponent_team(group: pd.DataFrame) -> pd.DataFrame:
@@ -276,6 +209,9 @@ class DataIngestion:
                     if count > 0:
                         print(f"- {reason}: {count} rows")
                 print(f"Final rows: {len(df)} (Started with {initial_rows})\n")
+
+            # Remove duplicates based on player, gameweek, and kickoff time
+            df = df.drop_duplicates(subset=["player_name", "gameweek", "kickoff_time"], keep="last")
 
             return df
         except Exception as e:
