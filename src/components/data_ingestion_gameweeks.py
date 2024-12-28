@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 from dotenv import load_dotenv
 from dataclasses import dataclass
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text, MetaData, Table, inspect
 import great_expectations as ge
 from typing import Dict, Tuple, Optional
 from minio import Minio
@@ -352,8 +352,35 @@ class DataIngestion:
                 f"postgresql://{self.config.postgres_user}:{self.config.postgres_password}"
                 f"@{self.config.postgres_host}:{self.config.postgres_port}/{self.config.postgres_database}"
             )
-            transformed_df.to_sql(self.config.postgres_table_name, engine, if_exists="append", index=False)
-            print(f"Data successfully ingested into '{self.config.postgres_table_name}' table with a full refresh.")
+            
+            # Debug: Print DataFrame info before insertion
+            print("\nDataFrame info before insertion:")
+            print(transformed_df.info())
+            print("\nDataFrame columns:", sorted(transformed_df.columns.tolist()))
+            
+            try:
+                transformed_df.to_sql(self.config.postgres_table_name, engine, if_exists="append", index=False)
+                print(f"Data successfully ingested into '{self.config.postgres_table_name}' table with a full refresh.")
+            except Exception as e:
+                print(f"Error during SQL insertion: {str(e)}")
+                # Check for common issues
+                if "column" in str(e).lower() and "does not exist" in str(e).lower():
+                    print("\nMissing columns in table schema. Comparing DataFrame columns with table schema...")
+                    inspector = inspect(engine)
+                    table_columns = {
+                        col['name']: col['type'].__class__.__name__ 
+                        for col in inspector.get_columns(self.config.postgres_table_name)
+                    }
+                    print("\nTable schema:", table_columns)
+                    print("DataFrame columns:", transformed_df.dtypes.to_dict())
+                    
+                    # Find missing columns
+                    df_columns = set(transformed_df.columns)
+                    table_cols = set(table_columns.keys())
+                    print("\nMissing in table:", df_columns - table_cols)
+                    print("Extra in table:", table_cols - df_columns)
+                
+                raise Exception(f"Error during data ingestion: {str(e)}")
 
         except Exception as e:
             raise Exception(f"Error during data ingestion: {e}")
