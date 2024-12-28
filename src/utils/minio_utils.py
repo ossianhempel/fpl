@@ -7,8 +7,9 @@ import csv
 import mypy
 from typing import Optional, Dict
 
-def create_minio_client(endpoint: str, access_key: str, secret_key: str) -> Optional[Minio]:
+def create_minio_client(endpoint: str | None, access_key: str | None, secret_key: str | None) -> Optional[Minio]:
     """Connect to MinIO with detailed error logging"""
+    print(f"Creating MinIO client with endpoint: {endpoint}, access_key: {access_key}, secret_key: {secret_key}")
     try:
         print(f"Attempting to connect to MinIO at endpoint: {endpoint}")  # Debug log
         
@@ -21,7 +22,7 @@ def create_minio_client(endpoint: str, access_key: str, secret_key: str) -> Opti
             return None
             
         client = Minio(
-            endpoint,
+            endpoint=str(endpoint),
             access_key=access_key,
             secret_key=secret_key,
             secure=False,
