@@ -312,7 +312,8 @@ class DataIngestion:
                 transfers_in INTEGER,
                 transfers_out INTEGER,
                 selected INTEGER,
-                yellow_cards INTEGER
+                yellow_cards INTEGER,
+                modified BOOLEAN DEFAULT FALSE
             );
         """
         query_postgres(cursor, create_table_query)
