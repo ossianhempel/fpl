@@ -13,7 +13,8 @@ import plotly.graph_objects as go
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
-from src.streamlit.streamlit_utils import load_data, connect_to_postgres
+from src.streamlit.streamlit_utils import load_data
+from src.utils.postgres_utils import connect_to_postgres
 
 # load environment variables
 load_dotenv()
@@ -22,12 +23,12 @@ st.set_page_config(layout="wide")
 
 # connect to the database
 connection = connect_to_postgres(
-    database=os.getenv("PG_DATABASE"),
-    host=os.getenv("PG_HOST"),
-    user=os.getenv("PG_USER"),
-    password=os.getenv("PG_PASSWORD"),
-    port=os.getenv("PG_PORT")
-)
+    database=os.getenv("PG_DATABASE", "fpl"),
+    host=os.getenv("PG_HOST", "65.108.88.160"),
+    user=os.getenv("PG_USER", "ossian"),
+    password=os.getenv("PG_PASSWORD", "secret_password"),
+    port=int(os.getenv("PG_PORT", 5436))
+    )
 
 st.title("Fantasy Premier League Dashboard")
 
@@ -104,7 +105,7 @@ if connection:
     )
 
     # Function to get top players based on current filters
-    def get_top_players(df, n=5):
+    def get_top_players(df: pl.DataFrame, n: int=5) -> pl.DataFrame:
         return (
             df.group_by("player_name")
             .agg(pl.sum("total_points").alias("total_points"))
@@ -113,7 +114,7 @@ if connection:
         )
 
     # Function to update filters for a given season
-    def update_filters_for_season(season):
+    def update_filters_for_season(season: str) -> None:
         season_data = df.filter(pl.col("season") == season)
         st.session_state.selected_teams = season_data["team"].unique().sort().to_list()
         st.session_state.selected_positions = season_data["position"].unique().sort().to_list()
@@ -123,20 +124,20 @@ if connection:
         st.session_state.selected_players_for_comparison = top_players["player_name"].to_list()
 
     # Function to set filters_changed when season changes
-    def on_season_change():
+    def on_season_change() -> None:
         st.session_state.filters_changed = True
         update_filters_for_season(st.session_state.selected_season)
 
     # Function to set filters_changed when teams change
-    def on_team_change():
+    def on_team_change() -> None:
         st.session_state.filters_changed = True
 
     # Function to set filters_changed when positions change
-    def on_position_change():
+    def on_position_change() -> None:
         st.session_state.filters_changed = True
 
     # Function to reset filters
-    def reset_filters():
+    def reset_filters() -> None:
         st.session_state.selected_season = latest_season
         update_filters_for_season(latest_season)
         st.session_state.filters_changed = True
@@ -155,10 +156,13 @@ if connection:
     latest_season = all_seasons[0]
 
     # Season selection with on_change callback
-    selected_season = st.sidebar.selectbox(
-        "Select Season", all_seasons, key="selected_season", on_change=on_season_change
+    selected_season: str = st.sidebar.selectbox(
+        "Select Season", 
+        all_seasons, 
+        key="selected_season", 
+        on_change=on_season_change,
     )
-
+    
     # Update filters when season changes or on initial load
     if "previous_season" not in st.session_state or st.session_state.previous_season != selected_season:
         update_filters_for_season(selected_season)
@@ -174,7 +178,7 @@ if connection:
         all_teams = df_selected_season["team"].unique().sort()
         if "selected_teams" not in st.session_state:
             st.session_state.selected_teams = all_teams.to_list()
-        selected_teams = st.sidebar.multiselect(
+        selected_teams: list[str] = st.sidebar.multiselect(
             "Select Teams",
             options=all_teams,
             default=None,
@@ -190,7 +194,7 @@ if connection:
         all_positions = df_selected_season["position"].unique().sort()
         if "selected_positions" not in st.session_state:
             st.session_state.selected_positions = all_positions.to_list()
-        selected_positions = st.sidebar.multiselect(
+        selected_positions: list[str] = st.sidebar.multiselect(
             "Select Positions",
             options=all_positions,
             default=None,
@@ -250,7 +254,7 @@ if connection:
                 st.session_state.filters_changed = False  # Reset the flag
 
             # Multiselect with default to show top players
-            selected_players = st.multiselect(
+            selected_players: list[str] = st.multiselect(
                 "Select Players to Compare",
                 options=all_players,
                 default=st.session_state.selected_players_for_comparison,
@@ -295,10 +299,8 @@ if connection:
             else:
                 st.warning("Please select at least one player for comparison.")
 
-
-
             # function to create player chart
-            def create_player_chart(position: str, title: str):
+            def create_player_chart(position: str, title: str) -> go.Figure:
                 top_players = (
                     filtered_df.filter(pl.col("position") == position)
                     .group_by("player_name")
