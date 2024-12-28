@@ -20,12 +20,13 @@ def create_minio_client(endpoint: str, access_key: str, secret_key: str) -> Opti
             })
             return None
             
-        client = Minio(endpoint,
-                    access_key=access_key,
-                    secret_key=secret_key,
-                    secure=False,
-                    cert_check=False,
-                )
+        client = Minio(
+            endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            secure=False,
+            cert_check=False,
+            )
         
         # Test connection by listing buckets
         buckets = client.list_buckets()
