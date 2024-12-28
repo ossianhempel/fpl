@@ -3,16 +3,23 @@ import os
 import sys
 import streamlit as st
 import psycopg2
+import pandas as pd
+from psycopg2.extensions import connection, cursor
+from typing import Optional, Tuple, List, Any
 
 # add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
-from src.utils import connect_to_postgres, query_postgres
+from src.utils.postgres_utils import connect_to_postgres, query_postgres
 
 
 @st.cache_data
-def load_data(_connection, schema_name, table_name):
+def load_data(
+    _connection: connection, 
+    schema_name: str, 
+    table_name: str
+    ) -> Tuple[List[Tuple[Any]], List[str]]:
     connection = _connection  # tell streamlit to not cache connection
     cursor = connection.cursor()
     # Select only the necessary columns based on the dashboard requirements
@@ -30,7 +37,13 @@ def load_data(_connection, schema_name, table_name):
 
 
 @st.cache_resource
-def connect_to_postgres(database, host, user, password, port):
+def postgres_utils(
+    database: str, 
+    host: str, 
+    user: str, 
+    password: str, 
+    port: int,
+    ) -> Optional[connection]:
     try:
         connection = psycopg2.connect(
             database=database,
