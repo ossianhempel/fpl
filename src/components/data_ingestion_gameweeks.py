@@ -377,8 +377,10 @@ class DataIngestion:
                     # Find missing columns
                     df_columns = set(transformed_df.columns)
                     table_cols = set(table_columns.keys())
-                    print("\nMissing in table:", df_columns - table_cols)
-                    print("Extra in table:", table_cols - df_columns)
+                    print("\nMissing in table:", df_columns - table_cols, 
+                        "\nThese columns need to be added to the table schema with SQL")
+                    print("Extra in table:", table_cols - df_columns, 
+                        "\nThese columns are in the SQL table but not in the DataFrame")
                 
                 raise Exception(f"Error during data ingestion: {str(e)}")
 
