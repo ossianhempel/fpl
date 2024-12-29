@@ -53,7 +53,7 @@ def test_transform_and_dedupe_data(data_ingestion: DataIngestion, gameweeks_data
         'threat', 'kickoff_time', 'goals_scored', 'assists', 'clean_sheets',
         'goals_conceded', 'own_goals', 'penalties_saved', 'penalties_missed',
         'yellow_cards', 'red_cards', 'saves', 'bonus', 'bps', 'selected',
-        'transfers_balance', 'transfers_in', 'transfers_out', 'modified'
+        'transfers_balance', 'transfers_in', 'transfers_out',
     ])
 
     # Optional columns that may or may not be present
@@ -80,7 +80,7 @@ def test_transform_and_dedupe_data(data_ingestion: DataIngestion, gameweeks_data
     
     # Check data types
     assert pd.api.types.is_bool_dtype(transformed_df["was_home"]), "was_home should be boolean"
-    assert pd.api.types.is_bool_dtype(transformed_df["modified"]), "modified should be boolean"
+    #assert pd.api.types.is_bool_dtype(transformed_df["modified"]), "modified should be boolean"
     assert pd.api.types.is_bool_dtype(transformed_df["player_started"]), "player_started should be boolean"
     assert pd.api.types.is_integer_dtype(transformed_df["gameweek"]), "gameweek should be integer type"
     
@@ -164,7 +164,7 @@ def test_complete_ingestion_process(
             required_columns = [
                 "player_name", "player_cost", "total_points", "position", "season",
                 "gameweek", "seasonal_fixture_id", "team", "opponent_team", "kickoff_time",
-                "was_home", "player_started", "modified"
+                "was_home", "player_started"
             ]
             for col in required_columns:
                 assert col in transformed_df.columns, f"Required column {col} missing"
@@ -181,7 +181,7 @@ def test_complete_ingestion_process(
             assert pd.api.types.is_string_dtype(transformed_df["opponent_team"].dtype), "opponent_team should be string"
             assert pd.api.types.is_bool_dtype(transformed_df["was_home"].dtype), "was_home should be boolean"
             assert pd.api.types.is_bool_dtype(transformed_df["player_started"].dtype), "player_started should be boolean"
-            assert pd.api.types.is_bool_dtype(transformed_df["modified"].dtype), "modified should be boolean"
+            #assert pd.api.types.is_bool_dtype(transformed_df["modified"].dtype), "modified should be boolean"
 
 def test_transform_with_incorrect_data_types(data_ingestion: DataIngestion) -> None:
     """Test transformation with incorrect data types."""
@@ -226,9 +226,9 @@ def test_modified_column_behavior(data_ingestion: DataIngestion) -> None:
     transformed_df = data_ingestion._transform_and_dedupe_data(df)
     
     # Verify the modified column
-    assert 'modified' in transformed_df.columns, "modified column should be present"
-    assert pd.api.types.is_bool_dtype(transformed_df['modified'].dtype), "modified should be boolean"
-    assert not transformed_df['modified'].any(), "all modified values should be False"
+    assert 'modified' not in transformed_df.columns, "modified column should not be present"
+    #assert pd.api.types.is_bool_dtype(transformed_df['modified'].dtype), "modified should be boolean"
+    #assert not transformed_df['modified'].any(), "all modified values should be False"
 
 def test_transform_with_different_schemas(data_ingestion: DataIngestion) -> None:
     """Test transformation with data from different seasons having different schemas."""
@@ -265,17 +265,17 @@ def test_transform_with_different_schemas(data_ingestion: DataIngestion) -> None
     # Verify the transformation
     assert len(transformed_df) == 4, "Should preserve all rows"
     assert 'player_started' in transformed_df.columns, "Should have player_started column"
-    assert 'modified' in transformed_df.columns, "Should have modified column"
+    #assert 'modified' in transformed_df.columns, "Should have modified column"
     assert pd.api.types.is_bool_dtype(transformed_df['player_started']), "player_started should be boolean"
-    assert pd.api.types.is_bool_dtype(transformed_df['modified']), "modified should be boolean"
+    #assert pd.api.types.is_bool_dtype(transformed_df['modified']), "modified should be boolean"
     
     # Check that old 'starts' data was properly converted to 'player_started'
     assert transformed_df.iloc[0]['player_started'] == True, "First row should have player_started True"
     assert transformed_df.iloc[1]['player_started'] == False, "Second row should have player_started False"
     
     # Check that all rows have modified column with proper values
-    assert not transformed_df['modified'].iloc[0:2].any(), "Old data should have modified=False"
-    assert not transformed_df['modified'].iloc[2:4].any(), "New data should preserve modified=False"
+    #assert not transformed_df['modified'].iloc[0:2].any(), "Old data should have modified=False"
+    #assert not transformed_df['modified'].iloc[2:4].any(), "New data should preserve modified=False"
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__]) 
