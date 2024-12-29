@@ -101,6 +101,10 @@ class DataIngestion:
             # Create a copy of the DataFrame to avoid SettingWithCopyWarning
             df = df.copy()
 
+            if "modified" in df.columns:
+                df = df.drop(columns=["modified"])
+                print('Dropped column "modified"')
+
             # First rename columns before any operations
             df.rename(columns={
                 "GW": "gameweek",
@@ -149,7 +153,7 @@ class DataIngestion:
                     print(f"Error converting column {col} to {dtype}: {str(e)}")
 
             # Handle boolean columns
-            boolean_columns = ["was_home", "player_started", "modified"]
+            boolean_columns = ["was_home", "player_started"]
             for column in boolean_columns:
                 # First ensure the column exists with default False
                 if column not in df.columns:
@@ -269,7 +273,6 @@ class DataIngestion:
                 transfers_out INTEGER,
                 selected INTEGER,
                 yellow_cards INTEGER,
-                modified BOOLEAN DEFAULT FALSE
             );
         """
         query_postgres(cursor, create_table_query)
