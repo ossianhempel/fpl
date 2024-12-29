@@ -30,14 +30,14 @@ class DataIngestionConfig:
     postgres_user: str = os.getenv("PG_USER", "ossian")
     postgres_password: str = os.getenv("PG_PASSWORD", "password")
     postgres_port: int = int(os.getenv("PG_PORT", 5436))
-    postgres_table_name: str = os.getenv("PG_TABLE_NAME_GW", "stg_gameweeks")
+    postgres_table_name: str = os.getenv("PG_TABLE_NAME_FIXTURES", "stg_fixtures")
     minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "minio-yok44444")
     access_key: str = os.getenv("MINIO_ACCESS_KEY", "minio-fpl")
     secret_key: str = os.getenv("MINIO_SECRET_KEY", "secret-key")
 
     def __post_init__(self) -> None:
         """Validate critical configuration."""
-        assert self.postgres_table_name == "stg_gameweeks", f"Invalid table name: expected 'stg_gameweeks', got '{self.postgres_table_name}'"
+        assert self.postgres_table_name == "stg_fixtures", f"Invalid table name: expected 'stg_fixtures', got '{self.postgres_table_name}'"
         assert self.minio_endpoint, "MinIO endpoint not configured"
 
 class DataIngestion:
