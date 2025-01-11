@@ -257,7 +257,6 @@ if connection:
             selected_players: list[str] = st.multiselect(
                 "Select Players to Compare",
                 options=all_players,
-                default=st.session_state.selected_players_for_comparison,
                 key="selected_players_for_comparison"
             )
 
