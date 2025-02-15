@@ -244,7 +244,7 @@ uritemplate==4.1.1
 urllib3==2.2.2
 uvicorn==0.30.6
 virtualenv==20.29.2
-watchdog==5.0.0
+watchdog<5.0.0
 wcwidth==0.2.13
 webcolors==24.8.0
 webencodings==0.5.1
