@@ -151,7 +151,7 @@ pandocfilters==1.5.1
 parso==0.8.4
 pathspec==0.12.1
 patsy==0.5.6
-pendulum==3.0.0
+pendulum>=3.0.0
 pexpect==4.9.0
 pillow==10.4.0
 platformdirs==4.3.2
@@ -160,7 +160,7 @@ plotly-express==0.4.1
 pluggy==1.5.0
 polars==1.5.0
 pre_commit==4.1.0
-prefect==2.20.3
+prefect==3.2.2
 primp==0.9.3
 prometheus_client==0.20.0
 prompt_toolkit==3.0.47
@@ -177,9 +177,9 @@ pyasn1==0.6.0
 pyasn1_modules==0.4.0
 pycparser==2.22
 pycryptodome==3.20.0
-pydantic==2.8.2
+pydantic<3
 pydantic-settings==2.7.1
-pydantic_core==2.20.1
+pydantic_core<3
 pydeck==0.9.1
 Pygments==2.18.0
 pyparsing==3.1.3
