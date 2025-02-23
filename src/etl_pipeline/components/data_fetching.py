@@ -4,15 +4,12 @@ from typing import Optional
 from minio import Minio
 import logging
 
-
 from src.etl_pipeline.components.config import DataFetchConfig
 
 from src.utils.minio_utils import fetch_all_from_minio
 
-
 # create logger for the module
 logger = logging.getLogger(__name__)
-
 
 load_dotenv()
 
@@ -54,7 +51,32 @@ def fetch_gameweeks_from_lake(
 def fetch_fixtures_from_lake(
     client: Minio, fixtures_fetcher_config: DataFetchConfig
 ) -> Optional[pd.DataFrame]:
-    pass
+    """ """
+    logger.info("Initiating fetching of fixtures")
+    try:
+        dfs = fetch_all_from_minio(
+            client=client,
+            endpoint=fixtures_fetcher_config.minio.minio_endpoint,
+            access_key=fixtures_fetcher_config.minio.minio_access_key,
+            secret_key=fixtures_fetcher_config.minio.minio_secret_key,
+            bucket_name=fixtures_fetcher_config.bucket_name,
+        )
+        if dfs is None or len(dfs) == 0:
+            logger.error("Fetch operation returned None instead of dataframes")
+            raise Exception("No data could fetched from fixtures bucket")
+
+        logger.info(f"Number of fixtures dataframes fetched: {len(dfs)}")
+    except Exception as e:
+        logger.error(f"Error occured: {e}", exc_info=True)
+
+    try:
+        if dfs is not None:
+            combined_df = pd.concat(dfs.values(), ignore_index=True)
+            logger.info(f"Combined fixtures dataframe shape: {combined_df.shape}")
+        return combined_df
+    except Exception as e:
+        logger.error(f"Couldn't combine the fetched dataframes: {e}")
+        return None
 
 
 if __name__ == "__main__":
