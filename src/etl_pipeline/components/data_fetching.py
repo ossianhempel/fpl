@@ -79,5 +79,36 @@ def fetch_fixtures_from_lake(
         return None
 
 
+def fetch_teams_from_lake(
+    client: Minio, teams_fetcher_config: DataFetchConfig
+) -> Optional[pd.DataFrame]:
+    """ """
+    logger.info("Initiating fetching of fixtures")
+    try:
+        dfs = fetch_all_from_minio(
+            client=client,
+            endpoint=teams_fetcher_config.minio.minio_endpoint,
+            access_key=teams_fetcher_config.minio.minio_access_key,
+            secret_key=teams_fetcher_config.minio.minio_secret_key,
+            bucket_name=teams_fetcher_config.bucket_name,
+        )
+        if dfs is None or len(dfs) == 0:
+            logger.error("Fetch operation returned None instead of dataframes")
+            raise Exception("No data could fetched from teams bucket")
+
+        logger.info(f"Number of teams dataframes fetched: {len(dfs)}")
+    except Exception as e:
+        logger.error(f"Error occured: {e}", exc_info=True)
+
+    try:
+        if dfs is not None:
+            combined_df = pd.concat(dfs.values(), ignore_index=True)
+            logger.info(f"Combined teams dataframe shape: {combined_df.shape}")
+        return combined_df
+    except Exception as e:
+        logger.error(f"Couldn't combine the fetched dataframes: {e}")
+        return None
+
+
 if __name__ == "__main__":
     print("hi")
