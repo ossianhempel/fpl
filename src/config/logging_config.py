@@ -12,6 +12,11 @@ def setup_logging() -> None:
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
 
+    # clear existing handlers to prevent duplicates
+    if logger.handlers:
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+
     # handlers to determine WHERE logs go
 
     # console handler - prints to terminal/console
