@@ -215,15 +215,37 @@ class SourceFileIngestor:
 if __name__ == "__main__":
     load_dotenv()
 
-    base_url = (
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
-    )
-    full_url = f"{base_url}/2024-25/gws/gw2.csv"
+    # base_url = (
+    #     "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
+    # )
+    # full_url = f"{base_url}/2024-25/gws/gw2.csv"
+
+    # ingestor = SourceFileIngestor()
+
+    # file = ingestor.download_source_file(full_url)
+
+    # ingestor.load_to_minio(
+    #     data=file, destination_bucket="bronze", destination_object_path="test_file.csv"
+    # )
+
+    gameweeks = [num for num in range(40)]
 
     ingestor = SourceFileIngestor()
 
-    file = ingestor.download_source_file(full_url)
-
-    ingestor.load_to_minio(
-        data=file, destination_bucket="bronze", destination_object_path="test_file.csv"
+    base_url = (
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
     )
+
+    season = "2024-25"
+
+    for week in gameweeks:
+        try:
+            full_url = f"{base_url}/{season}/gws/gw{week}.csv"
+            gw_file = ingestor.download_source_file(full_url)
+            ingestor.load_to_minio(
+                data=gw_file,
+                destination_bucket="bronze",
+                destination_object_path=f"gameweeks/{season}/gw_{season}_gw{week}.csv",
+            )
+        except Exception as e:
+            print(f"Ran into an error: {e}")
