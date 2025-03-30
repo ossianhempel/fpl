@@ -1,0 +1,1 @@
+prefect deploy --prefect-file src/prefect/prefect.yaml
