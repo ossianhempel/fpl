@@ -36,11 +36,15 @@ class SourceFileIngestor:
 
     def _create_minio_client(self) -> Minio:
         """Creates a Minio client object using a utility function"""
-        self.client = create_minio_client(
-            endpoint=self.config.minio_endpoint,
-            access_key=self.config.minio_access_key,
-            secret_key=self.config.minio_secret_key,
-        )
+        try:
+            self.client = create_minio_client(
+                endpoint=self.config.minio_endpoint,
+                access_key=self.config.minio_access_key,
+                secret_key=self.config.minio_secret_key,
+            )
+        except Exception as e:
+            self.logger.error(f"Minio client failed to be created: {e}")
+            raise Exception
         self.logger.info("Minio client was successfully created")
         return self.client
 
@@ -65,6 +69,7 @@ class SourceFileIngestor:
 
         # check source freshness
         try:
+            # TODO: allow option to pass bucket objects so it can be used in loops without having to refetch every iteration
             self.logger.info(f"Fetching all objects from {destination_bucket}..")
             objects = self.client.list_objects(
                 bucket_name=destination_bucket, recursive=True
