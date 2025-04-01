@@ -58,14 +58,14 @@ push: null
 # pull section allows you to provide instructions for cloning this project in remote locations
 # INFO: keep in mind that the files you want to use in the flow need to be pushed to the repo!!!! 
 pull:
-- prefect.deployments.steps.git_clone:
-    id: clone-step
-    repository: https://github.com/ossianhempel/fpl.git
-    branch: main
-- prefect.deployments.steps.pip_install_requirements:
-    requirements_file: requirements.txt
-    directory: "{{ clone-step.directory }}"
-    stream_output: False
+  - prefect.deployments.steps.git_clone:
+      id: clone-step
+      repository: https://github.com/ossianhempel/fpl.git
+      branch: main
+  - prefect.deployments.steps.pip_install_requirements:
+      requirements_file: requirements.txt
+      directory: "{{ clone-step.directory }}"
+      stream_output: False
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
