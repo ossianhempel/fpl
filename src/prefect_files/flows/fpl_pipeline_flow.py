@@ -10,7 +10,7 @@ WEB_SERVER_URL = os.getenv("PREFECT_WEB_SERVER_URL")
 season = "2024-25"
 
 
-@flow(name="fpl_data_pipeline")
+@flow(name="fpl_data_pipeline", log_prints=True, retries=2)
 def fpl_pipeline_flow():
     # download new gws
     download_gws(season=season)

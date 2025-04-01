@@ -59,19 +59,24 @@ push: null
 # INFO: keep in mind that the files you want to use in the flow need to be pushed to the repo!!!! 
 pull:
 - prefect.deployments.steps.git_clone:
+    id: clone-step
     repository: https://github.com/ossianhempel/fpl.git
     branch: main
+- prefect.deployments.steps.pip_install_requirements:
+    requirements_file: requirements.txt
+    directory: "{{ clone-step.directory }}"
+    stream_output: False
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
   - name: fpl-pipeline-deployment
     version: null
-    tags: []
+    tags: ["fpl"]
     concurrency_limit: null
     description: null
     schedule: 
       cron: "0 0 * * 2"  # Every Tuesday at midnight
-    entrypoint: src/prefect_files/flows/fpl_pipeline_flow.py:fpl_pipeline_flow
+    entrypoint: src/prefect_files/flows/fpl_pipeline_flow.py:fpl_pipeline_flow # relative reference to a function decorated as a flow that exists on some filesystem
     parameters: {}
     work_pool:
       name: default
