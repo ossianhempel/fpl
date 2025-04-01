@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from prefect import flow
 
-from ..tasks.fpl_tasks import download_gws
+from src.prefect_files.tasks.fpl_tasks import download_gws
 
 load_dotenv()
 WEB_SERVER_URL = os.getenv("PREFECT_WEB_SERVER_URL")
