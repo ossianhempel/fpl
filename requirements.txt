@@ -160,7 +160,7 @@ plotly-express==0.4.1
 pluggy==1.5.0
 polars==1.5.0
 pre_commit==4.1.0
-prefect==3.2.2
+prefect==3.1.5
 primp==0.9.3
 prometheus_client==0.20.0
 prompt_toolkit==3.0.47
@@ -254,3 +254,4 @@ widgetsnbextension==4.0.13
 xgboost==2.1.1
 yarl==1.18.3
 zope.interface==7.0.1
+prefect-github>=0.3.1
