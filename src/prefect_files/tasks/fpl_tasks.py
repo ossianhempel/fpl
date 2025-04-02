@@ -1,8 +1,5 @@
 from prefect import task
 from src.etl_pipeline.components.source_extraction import SourceFileIngestor
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 @task
@@ -35,9 +32,9 @@ def download_gws(
                 destination_bucket="bronze",
                 destination_object_path=f"gameweeks/{season}/gw_{season}_gw{week}.csv",
             )
-            logger.info(f"{full_url} successfully ingested")
+            print(f"{full_url} successfully ingested")
         except Exception as e:
-            logger.error(f"Ran into an error: {e}")
+            print(f"Ran into an error: {e}")
 
 
 if __name__ == "__main__":
