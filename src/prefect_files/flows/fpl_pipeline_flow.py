@@ -1,17 +1,27 @@
 import os
-from dotenv import load_dotenv
 from prefect import flow
+from prefect.blocks.system import Secret
 
 from src.prefect_files.tasks.fpl_tasks import download_gws
 
-load_dotenv()
 WEB_SERVER_URL = os.getenv("PREFECT_WEB_SERVER_URL")
 
 season = "2024-25"
 
+# Secret(value="sk-1234567890").save("fpl-minio-secret-key", overwrite=True)
+secret_block = Secret.load("fpl-minio-secret-key")
+secret_block.get()
+
 
 @flow(name="fpl_data_pipeline", log_prints=True, retries=2)
 def fpl_pipeline_flow():
+    # load environment variables fomr Prefect Secret blocks
+    os.environ[
+        "MINIO_ENDPOINT"
+    ] = "minio-yokckg4o44wg40wogk0okgks.65.108.88.160.sslip.io"
+    os.environ["MINIO_ACCESS_KEY"] = "minio-fpl"
+    os.environ["MINIO_SECRET_KEY"] = Secret.load("fpl-minio-secret-key").get()
+
     # download new gws
     download_gws(season=season)
 
@@ -26,12 +36,3 @@ def fpl_pipeline_flow():
 
 if __name__ == "__main__":
     fpl_pipeline_flow()
-
-
-"""
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2025-03-26T22:32:45.871324742Z pydantic_core._pydantic_core.ValidationError: 1 validation error for Deployment
-2025-03-26T22:32:45.871333820Z name
-2025-03-26T22:32:45.871342636Z   String should match pattern '^[^/%&><]*$' [type=string_pattern_mismatch, input_value='prefect/flows/fpl_pipeline_flow.py', input_type=str]
-2025-03-26T22:32:45.871352284Z     For further information visit https://errors.pydantic.dev/2.10/v/string_pattern_mismatch    
-"""
