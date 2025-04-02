@@ -5,8 +5,15 @@ import io
 import pandas as pd
 import csv
 from typing import Optional, Dict
+import logging
+from src.config.logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
+# TODO: convert print to logging
+# TODO: raise error if failing to create client
 def create_minio_client(
     endpoint: str | None, access_key: str | None, secret_key: str | None
 ) -> Optional[Minio]:
@@ -44,72 +51,68 @@ def create_minio_client(
         return client
 
     except S3Error as e:
-        print(f"S3 Error connecting to MinIO: {str(e)}")  # Debug log
-        return None
+        logger.error(f"S3 Error connecting to MinIO: {str(e)}")
+        raise S3Error
     except Exception as e:
-        print(f"Unexpected error connecting to MinIO: {str(e)}")  # Debug log
-        return None
+        logger.error(f"Unexpected error connecting to MinIO: {str(e)}")
+        raise Exception
 
 
+# TODO: this one currently only takes a source file path, what if we want to pass data directly?
 def upload_to_minio(
     client: Minio,
-    file_path: str,
+    source_file_path: str,
     destination_bucket: str,
     destination_folder_path: str = "",
 ) -> None:
-    """Upload to MinIO with detailed error logging"""
     if client is None:
-        print("Failed to upload: No MinIO client provided")
+        logging.error("Failed to upload: No MinIO client provided")
         return
 
-    bucket_name = destination_bucket
-    # Fix: Use destination_folder_path directly as the object name
-    object_name = destination_folder_path
-
     try:
-        print(f"Checking bucket: {bucket_name}")  # Debug log
-        if not client.bucket_exists(bucket_name):
-            print(f"Bucket {bucket_name} does not exist, creating...")  # Debug log
-            client.make_bucket(bucket_name)
-            print(f"Created bucket '{bucket_name}'")
+        # create the destination bucket if it doesnt exist
+        if not client.bucket_exists(destination_bucket):
+            logging.info(f"Bucket {destination_bucket} does not exist, creating...")
+            client.make_bucket(destination_bucket)
+            print(f"Created bucket '{destination_bucket}'")
 
-        print(f"Uploading file {file_path} to {bucket_name}/{object_name}")  # Debug log
+        logging.info(
+            f"Attempting to upload file {source_file_path} to {destination_bucket}/{destination_folder_path}"
+        )
 
-        # Determine the content type
+        # determine the content type based on file stub
         content_type = "application/octet-stream"
-        if file_path.endswith(".py"):
+        if source_file_path.endswith(".py"):
             content_type = "text/x-python"
-        elif file_path.endswith(".csv"):
-            content_type = "text/csv"
-        elif file_path.endswith(".json"):
+        elif source_file_path.endswith(".csv"):
+            content_type = "application/csv"
+        elif source_file_path.endswith(".json"):
             content_type = "application/json"
-        elif file_path.endswith(".txt"):
+        elif source_file_path.endswith(".txt"):
             content_type = "text/plain"
+        elif source_file_path.endswith("parquet"):
+            content_type = "application/vnd.apache.parquet"
 
-        with open(file_path, "rb") as file_data:
-            file_size = os.path.getsize(file_path)
+        bucket_name = destination_bucket
+        object_name = destination_folder_path
+
+        with open(source_file_path, "rb") as file_data:
+            file_size = os.path.getsize(source_file_path)
             client.put_object(
-                bucket_name,
-                object_name,
-                file_data,
-                file_size,
+                bucket_name=bucket_name,
+                object_name=object_name,
+                data=file_data,
+                length=file_size,
                 content_type=content_type,
             )
-            print(f"Successfully uploaded '{object_name}' to bucket '{bucket_name}'")
-
-        # remove the local file after uploading
-        if file_path.endswith(".csv"):
-            try:
-                os.remove(file_path)
-                print(f"Removed local version of {file_path}")
-            except Exception as e:
-                print(f"Failed to remove local file: {str(e)}")
-
+            logging.info(
+                f"Successfully uploaded '{object_name}' to bucket '{bucket_name}'"
+            )
     except S3Error as e:
-        print(f"S3 Error during upload: {str(e)}")
+        logging.error(f"S3 Error during upload: {str(e)}")
         raise Exception(f"S3 Error: {str(e)}")
     except Exception as e:
-        print(f"Unexpected error during upload: {str(e)}")
+        logging.error(f"Unexpected error during upload: {str(e)}")
         raise Exception(f"Upload error: {str(e)}")
 
 
@@ -144,6 +147,7 @@ def fetch_from_minio(
         return None
 
 
+# TODO: refactor for clarity, currently it feetches all with the assumption of them being csv compatible and of a certain format
 def fetch_all_from_minio(
     client: Minio, endpoint: str, access_key: str, secret_key: str, bucket_name: str
 ) -> Optional[Dict[str, pd.DataFrame]]:
