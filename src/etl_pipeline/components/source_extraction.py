@@ -14,12 +14,14 @@ from src.config.logging_config import setup_logging
 
 setup_logging()
 
+load_dotenv()
+
 
 @dataclass
 class SourceFileIngestorConfig:
-    minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "minio-yok44444")
-    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "minio-fpl")
-    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "secret-key")
+    minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "COULDNT GET ENV VAR")
+    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "COULDNT GET ENV VAR")
+    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "COULDNT GET ENV VAR")
     destination_bucket: str = "bronze"
 
 
