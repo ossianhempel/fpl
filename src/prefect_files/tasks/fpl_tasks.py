@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 @task
 def download_gws(season: str = "2024-25"):
     """Loops through gameweeks and downloads any new ones"""
-    gameweeks = [num for num in range(40)]
+    gameweeks = [num for num in range(1, 40)]
 
     ingestor = SourceFileIngestor()
 
