@@ -31,10 +31,21 @@ class SourceFileIngestor:
     loads it to a Minio bucket.
     """
 
-    def __init__(self) -> None:
-        self.config = SourceFileIngestorConfig()
+    def __init__(
+        self, minio_endpoint=None, minio_access_key=None, minio_secret_key=None
+    ) -> None:
         self.logger = logging.getLogger(__name__)
+        self.config = SourceFileIngestorConfig()
+        # allow overwrite ingestorConfig if credentials are passed manually to object (typically for remote deployment) - otherwise it will just use local dataclass config
         self.client = self._create_minio_client()
+        if minio_endpoint:
+            self.config.minio_endpoint = minio_endpoint
+        if minio_access_key:
+            self.config.minio_access_key = minio_access_key
+        if minio_secret_key:
+            self.config.minio_secret_key = minio_secret_key
+
+        self.logger.info(f"Using MinIO endpoint: {self.config.minio_endpoint}")
 
     def _create_minio_client(self) -> Minio:
         """Creates a Minio client object using a utility function"""
