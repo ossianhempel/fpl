@@ -6,11 +6,21 @@ logger = logging.getLogger(__name__)
 
 
 @task
-def download_gws(season: str = "2024-25"):
+def download_gws(
+    season: str = "2024-25",
+    minio_endpoint=None,
+    minio_access_key=None,
+    minio_secret_key=None,
+):
     """Loops through gameweeks and downloads any new ones"""
     gameweeks = [num for num in range(1, 40)]
 
-    ingestor = SourceFileIngestor()
+    creds = {
+        "minio_endpoint": minio_endpoint,
+        "minio_access_key": minio_access_key,
+        "minio_secret_key": minio_secret_key,
+    }
+    ingestor = SourceFileIngestor(**creds)
 
     base_url = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
@@ -28,3 +38,7 @@ def download_gws(season: str = "2024-25"):
             logger.info(f"{full_url} successfully ingested")
         except Exception as e:
             logger.error(f"Ran into an error: {e}")
+
+
+if __name__ == "__main__":
+    download_gws()
