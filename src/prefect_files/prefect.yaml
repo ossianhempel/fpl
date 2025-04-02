@@ -2,49 +2,6 @@
 # configuration for deploying your flows. We recommend committing this file to source
 # control along with your flow code.
 
-# # Generic metadata about this project
-# name: prefect
-# prefect-version: 3.2.2
-
-# # build section allows you to manage and build docker images
-# build: null
-
-# # push section allows you to manage if and how this project is uploaded to remote locations
-# push:
-# - prefect_aws.deployments.steps.push_to_s3:
-#     id: push_code
-#     requires: prefect-aws>=0.3.4
-#     bucket: fpl_flows
-#     folder: prefect
-
-# # pull section allows you to provide instructions for cloning this project in remote locations
-# pull:
-# - prefect_aws.deployments.steps.pull_from_s3:
-#     id: pull_code
-#     requires: prefect-aws>=0.3.4
-#     bucket: '{{ push_code.bucket }}'
-#     folder: '{{ push_code.folder }}'
-
-# # the deployments section allows you to provide configuration for deploying flows
-# deployments:
-# - name: null
-#   version: null
-#   tags: []
-#   description: null
-#   schedule: {}
-#   flow_name: null
-#   entrypoint: null
-#   parameters: {}
-#   work_pool:
-#     name: null
-#     work_queue_name: null
-#     job_variables: {}
-
-
-# Welcome to your prefect.yaml file! You can use this file for storing and managing
-# configuration for deploying your flows. We recommend committing this file to source
-# control along with your flow code.
-
 # Generic metadata about this project
 name: prefect
 prefect-version: 3.2.2
@@ -63,7 +20,7 @@ pull:
       repository: https://github.com/ossianhempel/fpl.git
       branch: main
   - prefect.deployments.steps.pip_install_requirements:
-      requirements_file: requirements.txt
+      requirements_file: requirements.txt # TODO: use a prefect-specific reqs file with only the necessaries
       directory: "{{ clone-step.directory }}"
       stream_output: False
 
@@ -81,5 +38,9 @@ deployments:
     work_pool:
       name: default
       work_queue_name: null
-      job_variables: {}
+      job_variables:
+        env:
+          MINIO_ENDPOINT: "minio-yokckg4o44wg40wogk0okgks.65.108.88.160.sslip.io"
+          MINIO_ACCESS_KEY: "minio-fpl"
+          MINIO_SECRET_KEY: "{{ prefect.blocks.secret.fpl-minio-secret-key }}"
     enforce_parameter_schema: true
