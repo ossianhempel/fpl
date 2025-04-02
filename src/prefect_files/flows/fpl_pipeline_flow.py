@@ -31,13 +31,14 @@ def fpl_pipeline_flow():
         print(f"Error loading secret: {e}")
         raise
 
-    # Print environment variables for debugging (mask sensitive data)
-    print(f"MINIO_ENDPOINT set to: {os.environ.get('MINIO_ENDPOINT')}")
-    print(f"MINIO_ACCESS_KEY set to: {os.environ.get('MINIO_ACCESS_KEY')}")
-    print("MINIO_SECRET_KEY is set (value hidden)")
+    minio_credentials = {
+        "minio_endpoint": os.getenv("MINIO_ENDPOINT"),
+        "minio_access_key": os.getenv("MINIO_ACCESS_KEY"),
+        "minio_secret_key": os.getenv("MINIO_SECRET_KEY"),
+    }
 
     # download new gws
-    download_gws(season=season)
+    download_gws(season=season, **minio_credentials)
 
     # TODO: download fixtures
 
