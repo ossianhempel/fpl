@@ -1,13 +1,15 @@
 import pytest
 import io
-from unittest.mock import patch, MagicMock
+import os
+from unittest.mock import patch, MagicMock, Mock
 from requests.exceptions import HTTPError
 from minio import Minio
+import polars as pl
+from datetime import datetime
 
 # Import the class to test
 from src.etl_pipeline.components.source_extraction import (
     SourceFileIngestor,
-    SourceFileIngestorConfig,
 )
 
 
@@ -15,10 +17,50 @@ class TestSourceFileIngestor:
     """Test cases for the SourceFileIngestor class."""
 
     @pytest.fixture
+    def data_dir(self):
+        """Returns the path of the test data"""
+        return os.path.join("tests", "test_data")
+
+    # valid csv data
+    @pytest.fixture
+    def valid_gw_data(self, data_dir):
+        """Load a valid test CSV into bytes"""
+        path = os.path.join(data_dir, "valid_gw_data.csv")
+        with open(path, "rb") as f:
+            data = io.BytesIO(f.read())
+        return data
+
+    @pytest.fixture
     def mock_minio_client(self):
         """Fixture that returns a mock Minio client."""
-        mock_client = MagicMock(spec=Minio)
-        mock_client.bucket_exists.return_value = True
+        mock_client = MagicMock(
+            spec=Minio
+        )  # creates mock object with correctly named attributes/methods (but not correct behaviors)
+        mock_client.bucket_exists.return_value = (
+            True  # define the behavior or bucket_exists method
+        )
+
+        # Create mock objects
+        mock_objects = [
+            Mock(
+                object_name="data/file1.csv",
+                last_modified=datetime(2023, 5, 15, 10, 30, 0),
+                etag="a1b2c3d4e5f6",
+                size=1024,
+                content_type="text/csv",
+                is_dir=False,
+            ),
+            Mock(
+                object_name="data/file2.json",
+                last_modified=datetime(2023, 5, 16, 14, 45, 0),
+                etag="f6e5d4c3b2a1",
+                size=2048,
+                content_type="application/json",
+                is_dir=False,
+            ),
+        ]
+        mock_client.list_objects.return_value = mock_objects
+
         return mock_client
 
     @pytest.fixture
@@ -79,7 +121,8 @@ class TestSourceFileIngestor:
 
         # Assertions
         assert result is True
-        mock_minio_client.put_object.assert_called_once()
+        mock_minio_client.put_object.assert_called_once()  # make sure minio upload is called
+
         # Verify correct bucket and path were used
         assert mock_minio_client.put_object.call_args[1]["bucket_name"] == "bronze"
         assert (
@@ -102,7 +145,9 @@ class TestSourceFileIngestor:
         )
 
         # Verify bucket was created
-        mock_minio_client.make_bucket.assert_called_once_with("bronze")
+        mock_minio_client.make_bucket.assert_called_once_with(
+            "bronze"
+        )  # when the bucket doesnt exist, it should call the make_bucket method
 
     def test_load_to_minio_exception(self, ingestor, mock_minio_client):
         """Test MinIO upload handles exceptions properly."""
@@ -122,37 +167,33 @@ class TestSourceFileIngestor:
         # Verify failure is reported
         assert result is False
 
-    # @patch('src.etl_pipeline.components.source_extraction.pl.DataFrame')
-    # def test_add_metadata(self, mock_dataframe, ingestor):
-    #     """Test metadata is correctly added to the data."""
-    #     # Setup
-    #     mock_df = MagicMock()
-    #     mock_dataframe.return_value = mock_df
-    #     mock_df.__getitem__.return_value = None
-    #     test_data = io.BytesIO(b'test,data\n1,2\n3,4')
+    def test_add_metadata(self, ingestor, valid_gw_data):
+        result = ingestor._add_metadata(data=valid_gw_data)
 
-    #     # Call the method (which is private, so we're accessing it directly for testing)
-    #     result = ingestor._add_metadata(test_data)
+        assert result, "add_metadata function didn't work"
 
-    #     # Assertions
-    #     mock_dataframe.assert_called_once()
-    #     assert 'ingestion_timestamp' in mock_df.__setitem__.call_args[0]
+        df = pl.read_csv(result)
+        assert (
+            "ingestion_timestamp" in df.columns
+        ), f"ingestion_timestamp was not present in the columns: {df.columns}"
+        assert (
+            df["ingestion_timestamp"].is_not_null().sum() > 0
+        ), "There are nulls in timestamp column"
+        # assert isinstance(df['ingestion_timestamp'], datetime), f"ingestion_timestamp was of type: {df['ingestion_timestamp'].dtype}"
 
-    # def test_validate_data(self, ingestor):
-    #     """Test data validation."""
-    #     # Since the implementation always returns True, this is a simple test
-    #     test_data = io.BytesIO(b'test,data\n1,2\n3,4')
-    #     result = ingestor._validate_data(test_data)
-    #     assert result is True
+    def test_validate_data(self, mock_minio_client, ingestor, valid_gw_data):
+        """Test data validation."""
+        # Since the implementation always returns True, this is a simple test
+        test_data = io.BytesIO(b"test,data\n1,2\n3,4")
+        result = ingestor._validate_data(
+            data=test_data, destination_bucket="bronze", destination_object_path=""
+        )
+        assert result is True
 
-    def test_config_defaults(self):
-        """Test that configuration uses default values."""
-        # Create config with default values
-        config = SourceFileIngestorConfig()
+        result2 = ingestor._validate_data(
+            data=valid_gw_data, destination_bucket="bronze", destination_object_path=""
+        )
+        assert result2 is True
 
-        # Verify the default values
-        assert config.destination_bucket == "bronze"
-        # We don't test the exact values of endpoint/keys as they depend on environment
-        assert isinstance(config.minio_endpoint, str)
-        assert isinstance(config.minio_access_key, str)
-        assert isinstance(config.minio_secret_key, str)
+        # at this stage it just logs some statistics about the data, but even if data is faulty somehow, it should be added
+        # to bronze and then we will catch it when cleaning it into silver
