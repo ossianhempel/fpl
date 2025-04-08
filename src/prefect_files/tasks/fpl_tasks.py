@@ -20,7 +20,7 @@ def download_gws(
     ingestor = SourceFileIngestor(**creds)
 
     base_url = (
-        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
+        "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data"
     )
 
     for week in gameweeks:
