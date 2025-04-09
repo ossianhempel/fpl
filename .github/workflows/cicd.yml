@@ -23,7 +23,6 @@ jobs:
       PG_PORT: ${{ secrets.PG_PORT }}
       PG_TABLE_NAME_FIXTURES: "stg_fixtures"
       PG_TABLE_NAME_GW: "stg_gameweeks"
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -48,6 +47,13 @@ jobs:
 
     # - name: Test with pytest
     #   run: pytest
+  deploy-prefect-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 
+        run: |
+          prefect deploy --prefect-file src/prefect_files/prefect.yaml
+
 
   # docker-build-and-publish:
   #   runs-on: ubuntu-latest
