@@ -63,7 +63,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install "prefect[github]==3.1.5"
-          pip install "pydantic<2.7.0" "pydantic-settings<2.3.0" "pydantic-core<2.18.0"
+          pip install "pydantic==2.10.6" "pydantic-settings==2.8.1" "pydantic-core==2.27.2"
         
 
       - name: Deploy Prefect Flow
