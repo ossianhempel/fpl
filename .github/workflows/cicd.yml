@@ -65,7 +65,10 @@ jobs:
           pip install "prefect[github]==3.1.5"
           pip install "pydantic==2.10.6" "pydantic-settings==2.8.1" "pydantic-core==2.27.2"
         
-
+      - name: Configure Prefect
+        run: |
+          prefect config set PREFECT_API_URL=${{ secrets.PREFECT_API_URL }}
+          prefect config set PREFECT_API_KEY=${{ secrets.PREFECT_API_KEY }}
       - name: Deploy Prefect Flow
         run: |
           prefect deploy --prefect-file src/prefect_files/prefect.yaml
