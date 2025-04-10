@@ -1,5 +1,12 @@
 from prefect import task
+from prefect.blocks.system import Secret
 from src.etl_pipeline.components.source_extraction import SourceFileIngestor
+
+
+@task
+def get_minio_secret():
+    secret_block = Secret.load("fpl-minio-secret-key")
+    return secret_block.get()
 
 
 @task
