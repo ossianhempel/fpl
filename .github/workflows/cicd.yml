@@ -81,7 +81,6 @@ jobs:
       - name: Install Dependencies
         run: |
           source .venv/bin/activate
-          python -m pip install --upgrade pip
           uv pip install "."
         
       - name: Configure Prefect
