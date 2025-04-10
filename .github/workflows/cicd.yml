@@ -38,7 +38,7 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         # Add uv to the PATH for subsequent steps
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH # Adjust if install path differs
-        uv venv
+        uv venv -p python
         
     - name: Install Dependencies
       run: |
@@ -76,8 +76,8 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           # Add uv to the PATH for subsequent steps
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH # Adjust if install path differs
-          uv venv
-
+          uv venv -p python
+          
       - name: Install Dependencies
         run: |
           source .venv/bin/activate
