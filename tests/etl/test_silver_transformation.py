@@ -3,6 +3,7 @@ import pandas as pd
 
 from src.etl_pipeline.components.silver_transformation import (
     validate_expected_columns,
+    validate_important_columns,
     validate_key_columns,
 )
 
@@ -23,6 +24,28 @@ def fake_dataframe():
             "season": ["2024-25", "2024-25", "2024-25", "2023-24", "2024-25"],
             "score": [1, 3, 9, 3, 2],
             "row_id": [1, 2, 3, 4, 5],
+        }
+    )
+
+    return df
+
+
+@pytest.fixture
+def fake_dataframe_with_nulls():
+    df = pd.DataFrame(
+        {
+            "date": [
+                "2024-03-01",
+                "2024-03-09",
+                "2024-05-10",
+                "2023-05-11",
+                "2024-03-14",
+            ],
+            "gw": [1, 2, pd.NA, 23, 2],
+            "player_id": [1, 2, 3, 4, 1],
+            "season": ["2024-25", "2024-25", "2024-25", "2023-24", "2024-25"],
+            "score": [1, 3, 9, 3, 2],
+            "row_id": [1, 2, 3, 4, pd.NA],
         }
     )
 
@@ -55,9 +78,9 @@ def test_validate_expected_columns(fake_dataframe):
     )
 
 
-def test_validate_important_columns():
-    # TODO: this
-    pass
+def test_validate_important_columns(fake_dataframe, fake_dataframe_with_nulls):
+    assert validate_important_columns(dataframe=fake_dataframe) is True
+    assert validate_important_columns(dataframe=fake_dataframe_with_nulls) is False
 
 
 def test_validate_key_columns(fake_dataframe):
