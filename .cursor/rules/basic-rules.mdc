@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Use typings when writing Python
+- Make use of comments explaining how/why we're doing things a specific way, not just what we're doing
+- Write comments in all lowercase unless it's a docstring
