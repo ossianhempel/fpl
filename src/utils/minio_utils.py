@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # TODO: raise error if failing to create client
 def create_minio_client(
     endpoint: str | None, access_key: str | None, secret_key: str | None
-) -> Optional[Minio]:
+) -> Minio:
     """Connect to MinIO and create a client, with detailed error logging"""
     print(
         f"Creating MinIO client with endpoint: {endpoint}, access_key: {access_key}, secret_key: {secret_key}"
@@ -25,7 +25,7 @@ def create_minio_client(
         print(f"Attempting to connect to MinIO at endpoint: {endpoint}")  # Debug log
 
         if not all([endpoint, access_key, secret_key]):
-            print(
+            raise Exception(
                 "Missing credentials:",
                 {  # Debug log
                     "endpoint": bool(endpoint),
@@ -33,7 +33,6 @@ def create_minio_client(
                     "secret_key": bool(secret_key),
                 },
             )
-            return None
 
         client = Minio(
             endpoint=str(endpoint),
@@ -52,10 +51,10 @@ def create_minio_client(
 
     except S3Error as e:
         logger.error(f"S3 Error connecting to MinIO: {str(e)}")
-        raise S3Error
+        raise
     except Exception as e:
         logger.error(f"Unexpected error connecting to MinIO: {str(e)}")
-        raise Exception
+        raise
 
 
 # TODO: this one currently only takes a source file path, what if we want to pass data directly?
@@ -148,6 +147,7 @@ def fetch_from_minio(
 
 
 # TODO: refactor for clarity, currently it feetches all with the assumption of them being csv compatible and of a certain format
+# TODO: should be able to specify a path to a folder (if we want to fetch from just a subfolder within a bucket)
 def fetch_all_from_minio(
     client: Minio, endpoint: str, access_key: str, secret_key: str, bucket_name: str
 ) -> Optional[Dict[str, pd.DataFrame]]:
@@ -162,7 +162,7 @@ def fetch_all_from_minio(
 
     Returns:
         Optional[Dict[str, pd.DataFrame]]: A dictionary mapping object names to DataFrames,
-                                           or None if no dataframes are retrieved or the connection fails.
+                                            or None if no dataframes are retrieved or the connection fails.
     """
 
     dataframes = {}
@@ -199,9 +199,9 @@ def fetch_all_from_minio(
                 finally:
                     response.release_conn()
             except Exception as e:
-                print(f"Error processing file {obj.object_name}: {e}")
+                logger.error(f"Error processing file {obj.object_name}: {e}")
     except Exception as e:
-        print(f"Error fetching objects from bucket {bucket_name}: {e}")
+        logger.error(f"Error fetching objects from bucket {bucket_name}: {e}")
         return None  # return None if fetching objects fails
 
     return dataframes if dataframes else None
