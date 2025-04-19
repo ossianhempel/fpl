@@ -6,8 +6,6 @@ import logging
 import os
 from dataclasses import dataclass
 
-from src.etl_pipeline.components.config import DataFetchConfig
-
 from src.utils.minio_utils import fetch_all_from_minio
 from src.utils.minio_utils import create_minio_client
 from src.config.logging_config import setup_logging
@@ -32,16 +30,14 @@ class SilverTransformationConfig:
 
 def fetch_bronze_data(
     client: Minio,
+    config: SilverTransformationConfig,
     fetch_function: Callable[
         [Minio, str, str, str, str], Optional[dict[str, pd.DataFrame]]
     ] = fetch_all_from_minio,  # injecting util function
-    config: Optional[SilverTransformationConfig] = None,
-) -> Optional[dict[str, pd.DataFrame]]:
+) -> dict[str, pd.DataFrame]:
     """
     Fetches all raw files from a given bucket in the bronze layer
     """
-    if config is None:
-        config = SilverTransformationConfig()
     logger.info(f"Initiating fetching of raw data from bucket: {config.source_bucket}")
     try:
         dfs = fetch_function(
@@ -104,11 +100,12 @@ def validate_expected_columns(
     return True
 
 
-def validate_important_columns(dataframe: pd.DataFrame) -> bool:
+def validate_important_columns(
+    dataframe: pd.DataFrame, important_columns: list[str]
+) -> bool:
     df = dataframe.copy()
-    columns = df.columns
     # make sure required columns are not null
-    for col in columns:
+    for col in important_columns:
         if df[col].isnull().sum() > 0:
             logger.error(f"{col} contains null values: {df[col].isnull().sum()}")
             return False
@@ -160,14 +157,14 @@ def removes_dupes(dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def test_sequential_values(dataframe: pd.DataFrame) -> bool:
-    pass
+    return True
 
 
 def test_accepted_ranges(dataframe: pd.DataFrame) -> bool:
-    pass
+    return True
 
 
-def merge_dataframes(dataframes: list[pd.DataFrame]) -> pd.DataFrame:
+def merge_dataframes(dataframes: dict[str, pd.DataFrame]) -> pd.DataFrame:
     try:
         if dataframes is not None:
             combined_df = pd.concat(dataframes.values(), ignore_index=True)
@@ -180,135 +177,51 @@ def merge_dataframes(dataframes: list[pd.DataFrame]) -> pd.DataFrame:
         return None
 
 
-def transform_gameweeks():
+def transform_gameweeks() -> pd.DataFrame:
+    # specific transformations for gameweeks
     pass
 
 
-def transform_fixtures():
+def transform_fixtures() -> pd.DataFrame:
+    # specific transformations for fixtures
     pass
 
 
-def transform_teams():
+def transform_teams() -> pd.DataFrame:
+    # specific transformations for teams
     pass
 
 
-def load_dataframe():
+def load_dataframe(dataframe: pd.DataFrame, bucket_folder_path: str) -> None:
+    # upload to silver bucket (with correct path) as parquet
     pass
-
-
-def fetch_gameweeks_from_lake(
-    client: Minio,
-    gw_fetcher_config: DataFetchConfig,
-    fetch_function: Callable = fetch_all_from_minio,  # inject util function
-) -> Optional[pd.DataFrame]:
-    """
-    Fetches all
-    """
-    logger.info("Initiating fetching of gameweeks")
-    try:
-        dfs = fetch_function(
-            client=client,
-            endpoint=gw_fetcher_config.minio.minio_endpoint,
-            access_key=gw_fetcher_config.minio.minio_access_key,
-            secret_key=gw_fetcher_config.minio.minio_secret_key,
-            bucket_name=gw_fetcher_config.bucket_name,
-        )
-        if dfs is None or len(dfs) == 0:
-            logger.error("Fetch operation returned None instead of dataframes")
-            raise Exception("No data could fetched from gameweeks bucket")
-
-        logger.info(f"Number of gameweek dataframes fetched: {len(dfs)}")
-
-    except Exception as e:
-        logger.error(f"Error occurred: {e}", exc_info=True)
-        raise  # re-raise to handle in caller
-
-    try:
-        if dfs is not None:
-            combined_df = pd.concat(dfs.values(), ignore_index=True)
-            logger.info(f"Combined gameweeks dataframe shape: {combined_df.shape}")
-        return combined_df
-    except Exception as e:
-        logger.error(f"Couldn't combine the fetched dataframes: {e}")
-        return None
-
-
-def fetch_fixtures_from_lake(
-    client: Minio, fixtures_fetcher_config: DataFetchConfig
-) -> Optional[pd.DataFrame]:
-    """ """
-    logger.info("Initiating fetching of fixtures")
-    try:
-        dfs = fetch_all_from_minio(
-            client=client,
-            endpoint=fixtures_fetcher_config.minio.minio_endpoint,
-            access_key=fixtures_fetcher_config.minio.minio_access_key,
-            secret_key=fixtures_fetcher_config.minio.minio_secret_key,
-            bucket_name=fixtures_fetcher_config.bucket_name,
-        )
-        if dfs is None or len(dfs) == 0:
-            logger.error("Fetch operation returned None instead of dataframes")
-            raise Exception("No data could fetched from fixtures bucket")
-
-        logger.info(f"Number of fixtures dataframes fetched: {len(dfs)}")
-    except Exception as e:
-        logger.error(f"Error occured: {e}", exc_info=True)
-
-    try:
-        if dfs is not None:
-            combined_df = pd.concat(dfs.values(), ignore_index=True)
-            logger.info(f"Combined fixtures dataframe shape: {combined_df.shape}")
-        return combined_df
-    except Exception as e:
-        logger.error(f"Couldn't combine the fetched dataframes: {e}")
-        return None
-
-
-def fetch_teams_from_lake(
-    client: Minio, teams_fetcher_config: DataFetchConfig
-) -> Optional[pd.DataFrame]:
-    """ """
-    logger.info("Initiating fetching of fixtures")
-    try:
-        dfs = fetch_all_from_minio(
-            client=client,
-            endpoint=teams_fetcher_config.minio.minio_endpoint,
-            access_key=teams_fetcher_config.minio.minio_access_key,
-            secret_key=teams_fetcher_config.minio.minio_secret_key,
-            bucket_name=teams_fetcher_config.bucket_name,
-        )
-        if dfs is None or len(dfs) == 0:
-            logger.error("Fetch operation returned None instead of dataframes")
-            raise Exception("No data could fetched from teams bucket")
-
-        logger.info(f"Number of teams dataframes fetched: {len(dfs)}")
-    except Exception as e:
-        logger.error(f"Error occured: {e}", exc_info=True)
-
-    try:
-        if dfs is not None:
-            combined_df = pd.concat(dfs.values(), ignore_index=True)
-            logger.info(f"Combined teams dataframe shape: {combined_df.shape}")
-        return combined_df
-    except Exception as e:
-        logger.error(f"Couldn't combine the fetched dataframes: {e}")
-        return None
 
 
 if __name__ == "__main__":
     load_dotenv()
+    endpoint = os.getenv("MINIO_ENDPOINT")
+    access_key = os.getenv("MINIO_ACCESS_KEY")
+    secret_key = os.getenv("MINIO_SECRET_KEY")
+
+    if endpoint is None or access_key is None or secret_key is None:
+        raise ValueError("Missing required environment variables")
+
     client = create_minio_client(
-        endpoint=os.getenv("MINIO_ENDPOINT"),
-        access_key=os.getenv("MINIO_ACCESS_KEY"),
-        secret_key=os.getenv("MINIO_SECRET_KEY"),
+        endpoint=endpoint,
+        access_key=access_key,
+        secret_key=secret_key,
     )
+
+    # check if client was successfully created, otherwise typeerror in following usage
+    # if client is None:
+    #     raise ValueError("Failed to create Minio client")
 
     config = SilverTransformationConfig()
 
     dfs = fetch_bronze_data(
         client=client,
         fetch_function=fetch_all_from_minio,
-        config=SilverTransformationConfig,
+        config=config,
     )
 
     expected_cols_gw = [
@@ -370,5 +283,5 @@ if __name__ == "__main__":
             df, expected_columns=expected_cols_gw
         ), "Expected columns validation failed"
         assert validate_important_columns(
-            df, key_columns=key_cols
+            df, important_columns=key_cols
         ), "Key column validation failed"
