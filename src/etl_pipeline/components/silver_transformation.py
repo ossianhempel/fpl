@@ -32,20 +32,24 @@ class SilverTransformationConfig:
 
 def fetch_bronze_data(
     client: Minio,
-    fetch_function: Callable = fetch_all_from_minio,  # injecting util function
-    config: object = SilverTransformationConfig,
-) -> Optional[pd.DataFrame]:
+    fetch_function: Callable[
+        [Minio, str, str, str, str], Optional[dict[str, pd.DataFrame]]
+    ] = fetch_all_from_minio,  # injecting util function
+    config: Optional[SilverTransformationConfig] = None,
+) -> Optional[dict[str, pd.DataFrame]]:
     """
     Fetches all raw files from a given bucket in the bronze layer
     """
+    if config is None:
+        config = SilverTransformationConfig()
     logger.info(f"Initiating fetching of raw data from bucket: {config.source_bucket}")
     try:
         dfs = fetch_function(
-            client=client,
-            endpoint=config.minio_endpoint,
-            access_key=config.minio_access_key,
-            secret_key=config.minio_secret_key,
-            bucket_name=config.source_bucket,
+            client,
+            config.minio_endpoint,
+            config.minio_access_key,
+            config.minio_secret_key,
+            config.source_bucket,
         )
         if dfs is None or len(dfs) == 0:
             logger.error("Fetch operation returned None instead of dataframes")
@@ -58,7 +62,9 @@ def fetch_bronze_data(
         raise Exception  # re-raise to handle in caller
 
 
-def validate_expected_columns(dataframe: pd.DataFrame, expected_columns: list) -> bool:
+def validate_expected_columns(
+    dataframe: pd.DataFrame, expected_columns: list[str]
+) -> bool:
     # TODO: what to do when actual df misses any cols from expected? fill with null/0 and have separate tests for crucial columns?
     logger.info("Validating expected columns of dataframe")
 
@@ -98,7 +104,7 @@ def validate_expected_columns(dataframe: pd.DataFrame, expected_columns: list) -
     return True
 
 
-def validate_important_columns(dataframe: pd.DataFrame, key_columns: list) -> bool:
+def validate_important_columns(dataframe: pd.DataFrame) -> bool:
     df = dataframe.copy()
     columns = df.columns
     # make sure required columns are not null
@@ -111,7 +117,7 @@ def validate_important_columns(dataframe: pd.DataFrame, key_columns: list) -> bo
 
 
 def validate_key_columns(
-    dataframe: pd.DataFrame, key_columns: list, composite_key: bool = False
+    dataframe: pd.DataFrame, key_columns: list[str], composite_key: bool = False
 ) -> bool:
     df = dataframe.copy()
     logger.info("Validating key columns")
@@ -133,12 +139,24 @@ def validate_key_columns(
     return True
 
 
-def removes_dupes(dataframe: pd.DataFrame):
-    pass
+def removes_dupes(dataframe: pd.DataFrame) -> pd.DataFrame:
+    logger.info("Looking for duplicate rows")
+    # look for duplicate rows (after dropping ingestion_time)
+    df = dataframe.copy()
 
+    if "ingestion_timestamp" in df.columns:
+        cols_to_dedupe_on = df.drop("ingestion_timestamp", axis=1)
+    else:
+        cols_to_dedupe_on = df.columns
 
-def remove_outliers(dataframe: pd.DataFrame) -> pd.DataFrame:
-    pass
+    count_dupes = df.duplicated(subset=cols_to_dedupe_on).sum()
+    if count_dupes > 0:
+        logger.info(f"Found {count_dupes} duplicate rows, dropping those")
+        df.drop_duplicates(subset=cols_to_dedupe_on, inplace=True)
+    else:
+        logger.info("Found no duplicate rows")
+
+    return df
 
 
 def test_sequential_values(dataframe: pd.DataFrame) -> bool:
