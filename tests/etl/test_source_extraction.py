@@ -17,13 +17,13 @@ class TestSourceFileIngestor:
     """Test cases for the SourceFileIngestor class."""
 
     @pytest.fixture
-    def data_dir(self):
+    def data_dir(self) -> str:
         """Returns the path of the test data"""
         return os.path.join("tests", "test_data")
 
     # valid csv data
     @pytest.fixture
-    def valid_gw_data(self, data_dir):
+    def valid_gw_data(self, data_dir: str) -> io.BytesIO:
         """Load a valid test CSV into bytes"""
         path = os.path.join(data_dir, "valid_gw_data.csv")
         with open(path, "rb") as f:
@@ -31,7 +31,7 @@ class TestSourceFileIngestor:
         return data
 
     @pytest.fixture
-    def mock_minio_client(self):
+    def mock_minio_client(self) -> MagicMock:
         """Fixture that returns a mock Minio client."""
         mock_client = MagicMock(
             spec=Minio
@@ -180,6 +180,16 @@ class TestSourceFileIngestor:
             df["ingestion_timestamp"].is_not_null().sum() > 0
         ), "There are nulls in timestamp column"
         # assert isinstance(df['ingestion_timestamp'], datetime), f"ingestion_timestamp was of type: {df['ingestion_timestamp'].dtype}"
+
+    def test_add_gameweek(self, ingestor, valid_gw_data) -> None:
+        """Test that gameweek is added as a column"""
+        data_with_gw = ingestor._add_gameweek(valid_gw_data, 5)
+        df = pl.read_csv(data_with_gw)
+        assert (
+            "gw" in df.columns
+        ), f"Couldn't find the gameweek column in data: {df.columns}"
+        assert df["gw"].min() == 5, f"Found wrong value for gw: {df['gw'].min()}"
+        assert df["gw"].max() == 5, f"Found wrong value for gw: {df['gw'].max()}"
 
     def test_validate_data(self, mock_minio_client, ingestor, valid_gw_data):
         """Test data validation."""

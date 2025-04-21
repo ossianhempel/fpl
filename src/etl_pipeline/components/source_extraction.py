@@ -177,6 +177,23 @@ class SourceFileIngestor:
             self.logger.error(f"Failed to add metadata: {e}")
             raise Exception
 
+    def _add_gameweek(self, data: io.BytesIO, gameweek: int) -> io.BytesIO:
+        try:
+            self.logger.info("Adding gameweek column to source data")
+            df = pl.read_csv(data)
+            df = df.with_columns(pl.lit(value=gameweek).alias("gw"))
+
+            # convert back to bytes
+            buffer = io.BytesIO()  # initialise in-memory file-like object
+            df.write_csv(buffer)  # write the df as csv format to the buffer
+            buffer.seek(
+                0
+            )  # reset position to beginning so the next read won't start at the end
+            return buffer
+        except Exception as e:
+            self.logger.error(f"Failed to add gameweek column: {e}")
+            raise
+
     def load_to_minio(
         self, data: io.BytesIO, destination_bucket: str, destination_object_path: str
     ) -> bool:
