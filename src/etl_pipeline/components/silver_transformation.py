@@ -136,7 +136,7 @@ def validate_key_columns(
     return True
 
 
-def removes_dupes(dataframe: pd.DataFrame) -> pd.DataFrame:
+def remove_dupes(dataframe: pd.DataFrame) -> pd.DataFrame:
     logger.info("Looking for duplicate rows")
     # look for duplicate rows (after dropping ingestion_time)
     df = dataframe.copy()
@@ -156,11 +156,27 @@ def removes_dupes(dataframe: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def test_sequential_values(dataframe: pd.DataFrame) -> bool:
-    return True
+def assert_strictly_sequential_values(
+    dataframe: pd.DataFrame, column_name: str, step: int = 1
+) -> bool:
+    """Test if values in a column increase by exactly 'step' each row"""
+    df = dataframe.copy()
+    is_sequential = bool(
+        (df[column_name].diff().dropna() == step).all()
+    )  # forced to cast as bool because MyPy doesn't have complete information about the pandas method
+    return is_sequential
 
 
-def test_accepted_ranges(dataframe: pd.DataFrame) -> bool:
+def assert_continuous_sequential_values(dataframe: pd.DataFrame, column: str) -> bool:
+    """Test if column contains a continuous sequence without gaps"""
+    df = dataframe.copy()
+    sorted_values = df[column].sort_values(ascending=False).reset_index(drop=True)
+    expected_range = pd.Series(range(sorted_values.min(), sorted_values.max() + 1))
+
+    return bool(sorted_values.equals(expected_range))
+
+
+def assert_accepted_ranges(dataframe: pd.DataFrame) -> bool:
     return True
 
 
@@ -211,10 +227,6 @@ if __name__ == "__main__":
         access_key=access_key,
         secret_key=secret_key,
     )
-
-    # check if client was successfully created, otherwise typeerror in following usage
-    # if client is None:
-    #     raise ValueError("Failed to create Minio client")
 
     config = SilverTransformationConfig()
 
@@ -268,7 +280,7 @@ if __name__ == "__main__":
         "xP",
         "yellow_cards",
     ]
-    key_cols = [
+    important_cols = [
         "fixture",
         "kickoff_time",
         "name",
@@ -277,11 +289,24 @@ if __name__ == "__main__":
         "total_points",
         "position",
     ]
+    key_cols = [
+        "kickoff_time",
+        "name",
+        "team",
+    ]
 
     for df in dfs.values():
         assert validate_expected_columns(
             df, expected_columns=expected_cols_gw
         ), "Expected columns validation failed"
         assert validate_important_columns(
-            df, important_columns=key_cols
+            df, important_columns=important_cols
+        ), "Important column validation failed"
+        assert validate_key_columns(
+            df, key_columns=key_cols, composite_key=True
         ), "Key column validation failed"
+        df = remove_dupes(df)
+        assert assert_continuous_sequential_values(
+            df, "kickoff_time"
+        ), "Kickoff time was not sequential"
+        assert assert_accepted_ranges(df, "gw")
