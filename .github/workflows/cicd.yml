@@ -44,7 +44,6 @@ jobs:
       run: |
         source .venv/bin/activate
         uv pip install ".[dev]"
-        uv pip list
 
     # - name: Lint with flake8
     #   run: |
