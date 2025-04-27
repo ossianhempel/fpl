@@ -166,7 +166,7 @@ dependencies = [
     "plotly-express>=0.4.1",
     "pluggy>=1.5.0",
     "polars>=1.5.0",
-    "pre_commit>=4.1.0",
+    "pre-commit>=4.1.0",
     "prefect==3.1.5",
     "prefect-github>=0.3.1",
     "primp>=0.9.3",
