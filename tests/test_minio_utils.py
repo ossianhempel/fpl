@@ -4,6 +4,8 @@ import os
 
 from src.utils.minio_utils import fetch_all_from_minio
 
+# TODO: test upload_to_minio
+
 
 def test_fetch_all_from_minio_handles_real_gameweeks_data(test_data_path: str) -> None:
     """Test handling of real gameweeks data"""

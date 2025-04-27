@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 # TODO: convert print to logging
 # TODO: raise error if failing to create client
-def create_minio_client(
-    endpoint: str | None, access_key: str | None, secret_key: str | None
-) -> Minio:
+def create_minio_client(endpoint: str, access_key: str, secret_key: str) -> Minio:
     """Connect to MinIO and create a client, with detailed error logging"""
     print(
         f"Creating MinIO client with endpoint: {endpoint}, access_key: {access_key}, secret_key: {secret_key}"
