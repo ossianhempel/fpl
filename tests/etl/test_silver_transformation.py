@@ -9,7 +9,7 @@ from src.etl_pipeline.components.silver_transformation import (
 
 
 @pytest.fixture
-def fake_dataframe():
+def fake_dataframe() -> pd.DataFrame:
     df = pd.DataFrame(
         {
             "date": [
@@ -31,7 +31,7 @@ def fake_dataframe():
 
 
 @pytest.fixture
-def fake_dataframe_with_nulls():
+def fake_dataframe_with_nulls() -> pd.DataFrame:
     df = pd.DataFrame(
         {
             "date": [
@@ -52,7 +52,7 @@ def fake_dataframe_with_nulls():
     return df
 
 
-def test_validate_expected_columns(fake_dataframe):
+def test_validate_expected_columns(fake_dataframe: pd.DataFrame) -> None:
     expected_cols_1 = ["date", "gw", "season"]
     assert (
         validate_expected_columns(
@@ -78,7 +78,9 @@ def test_validate_expected_columns(fake_dataframe):
     )
 
 
-def test_validate_important_columns(fake_dataframe, fake_dataframe_with_nulls):
+def test_validate_important_columns(
+    fake_dataframe: pd.DataFrame, fake_dataframe_with_nulls: pd.DataFrame
+) -> None:
     assert validate_important_columns(dataframe=fake_dataframe) is True
     assert validate_important_columns(dataframe=fake_dataframe_with_nulls) is False
 
@@ -114,9 +116,21 @@ def test_validate_key_columns(fake_dataframe):
     )
 
 
-def test_merge_dataframes():
+def test_remove_dupes():
     pass
 
 
-def test_clean_dataframes():
+def test_assert_strictly_sequential_values():
+    pass
+
+
+def test_assert_continuous_sequential_values():
+    pass
+
+
+def test_assert_accepted_ranges():
+    pass
+
+
+def test_merge_dataframes():
     pass
