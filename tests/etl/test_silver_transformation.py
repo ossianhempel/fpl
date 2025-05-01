@@ -81,8 +81,16 @@ def test_validate_expected_columns(fake_dataframe: pd.DataFrame) -> None:
 def test_validate_important_columns(
     fake_dataframe: pd.DataFrame, fake_dataframe_with_nulls: pd.DataFrame
 ) -> None:
-    assert validate_important_columns(dataframe=fake_dataframe) is True
-    assert validate_important_columns(dataframe=fake_dataframe_with_nulls) is False
+    assert (
+        validate_important_columns(dataframe=fake_dataframe, important_columns=["date"])
+        is True
+    )
+    assert (
+        validate_important_columns(
+            dataframe=fake_dataframe_with_nulls, important_columns=["row_id"]
+        )
+        is False
+    )
 
 
 def test_validate_key_columns(fake_dataframe):
