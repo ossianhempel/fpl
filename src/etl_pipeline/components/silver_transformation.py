@@ -176,8 +176,38 @@ def assert_continuous_sequential_values(dataframe: pd.DataFrame, column: str) ->
     return bool(sorted_values.equals(expected_range))
 
 
-def assert_accepted_ranges(dataframe: pd.DataFrame) -> bool:
-    return True
+def assert_accepted_ranges(
+    dataframe: pd.DataFrame, column: str, max: int, min: int
+) -> bool:
+    """
+    Check if all values in the specified column are within the given range.
+
+    Parameters:
+    -----------
+    dataframe : pd.DataFrame
+        The DataFrame to check
+    column : str
+        The name of the column to check
+    max : int
+        The maximum acceptable value (inclusive)
+    min : int
+        The minimum acceptable value (inclusive)
+
+    Returns:
+    --------
+    bool
+        True if all values in the column are within the specified range,
+        False otherwise or if the column doesn't exist
+    """
+    # Check if column exists in the DataFrame
+    if column not in dataframe.columns:
+        return False
+
+    # Check if all values in the column are within the specified range
+    is_within_range = (dataframe[column] >= min) & (dataframe[column] <= max)
+
+    # Return True if all values are within range, otherwise False
+    return bool(is_within_range.all())
 
 
 def merge_dataframes(dataframes: dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -190,7 +220,7 @@ def merge_dataframes(dataframes: dict[str, pd.DataFrame]) -> pd.DataFrame:
         return combined_df
     except Exception as e:
         logger.error(f"Couldn't combine the fetched dataframes: {e}")
-        return None
+        raise
 
 
 def transform_gameweeks() -> pd.DataFrame:
@@ -309,4 +339,4 @@ if __name__ == "__main__":
         assert assert_continuous_sequential_values(
             df, "kickoff_time"
         ), "Kickoff time was not sequential"
-        assert assert_accepted_ranges(df, "gw")
+        assert assert_accepted_ranges(dataframe=df, column="gw", min=1, max=39)
