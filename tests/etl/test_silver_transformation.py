@@ -5,6 +5,7 @@ from src.etl_pipeline.components.silver_transformation import (
     validate_expected_columns,
     validate_important_columns,
     validate_key_columns,
+    remove_dupes,
 )
 
 
@@ -52,6 +53,28 @@ def fake_dataframe_with_nulls() -> pd.DataFrame:
     return df
 
 
+@pytest.fixture
+def fake_dataframe_with_dupes() -> pd.DataFrame:
+    df = pd.DataFrame(
+        {
+            "date": [
+                "2024-03-01",
+                "2024-03-09",
+                "2024-03-09",
+                "2023-05-11",
+                "2024-03-14",
+            ],
+            "gw": [1, 2, 2, 23, 2],
+            "player_id": [1, 2, 2, 4, 1],
+            "season": ["2024-25", "2024-25", "2024-25", "2023-24", "2024-25"],
+            "score": [1, 3, 3, 3, 2],
+            "row_id": [1, 2, 2, 4, 5],
+        }
+    )
+
+    return df
+
+
 def test_validate_expected_columns(fake_dataframe: pd.DataFrame) -> None:
     expected_cols_1 = ["date", "gw", "season"]
     assert (
@@ -93,7 +116,7 @@ def test_validate_important_columns(
     )
 
 
-def test_validate_key_columns(fake_dataframe):
+def test_validate_key_columns(fake_dataframe: pd.DataFrame) -> None:
     key_cols_1 = ["date", "player_id"]
     assert (
         validate_key_columns(
@@ -124,8 +147,11 @@ def test_validate_key_columns(fake_dataframe):
     )
 
 
-def test_remove_dupes():
-    pass
+def test_remove_dupes(fake_dataframe_with_dupes: pd.DataFrame) -> None:
+    deduped = remove_dupes(fake_dataframe_with_dupes)
+    assert (
+        deduped.duplicated().sum() == 0
+    ), "Found duplicates in supposedly deduped dataframe"
 
 
 def test_assert_strictly_sequential_values():
