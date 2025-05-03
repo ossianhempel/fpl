@@ -6,6 +6,9 @@ from src.etl_pipeline.components.silver_transformation import (
     validate_important_columns,
     validate_key_columns,
     remove_dupes,
+    assert_continuous_sequential_values,
+    assert_strictly_sequential_values,
+    assert_accepted_ranges,
 )
 
 
@@ -154,17 +157,27 @@ def test_remove_dupes(fake_dataframe_with_dupes: pd.DataFrame) -> None:
     ), "Found duplicates in supposedly deduped dataframe"
 
 
-def test_assert_strictly_sequential_values():
-    pass
+def test_assert_strictly_sequential_values(fake_dataframe: pd.DataFrame) -> None:
+    assert assert_strictly_sequential_values(fake_dataframe, "row_id", 1) is True
+    assert assert_strictly_sequential_values(fake_dataframe, "gw", 1) is False
 
 
-def test_assert_continuous_sequential_values():
-    pass
+def test_assert_continuous_sequential_values(fake_dataframe: pd.DataFrame) -> None:
+    assert assert_continuous_sequential_values(fake_dataframe, "score") is False
+    assert assert_continuous_sequential_values(fake_dataframe, "row_id") is True
 
 
-def test_assert_accepted_ranges():
-    pass
+def test_assert_accepted_ranges(fake_dataframe: pd.DataFrame) -> None:
+    assert (
+        assert_accepted_ranges(fake_dataframe, "gw", 39, 1) is True
+    ), "Expected True but got False, for GW"
+    assert (
+        assert_accepted_ranges(fake_dataframe, "row_id", 3, 3) is False
+    ), "row_id test expected false but got true"
+    assert (
+        assert_accepted_ranges(fake_dataframe, "jkkjökjö", 3, 3) is False
+    ), "Column didn't exist in df but still returned True"
 
 
-def test_merge_dataframes():
-    pass
+# def test_merge_dataframes(fake_dataframes: list[pd.DataFrame]) -> None:
+#     return None
