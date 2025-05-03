@@ -9,6 +9,7 @@ from src.etl_pipeline.components.silver_transformation import (
     assert_continuous_sequential_values,
     assert_strictly_sequential_values,
     assert_accepted_ranges,
+    merge_dataframes,
 )
 
 
@@ -179,5 +180,19 @@ def test_assert_accepted_ranges(fake_dataframe: pd.DataFrame) -> None:
     ), "Column didn't exist in df but still returned True"
 
 
-# def test_merge_dataframes(fake_dataframes: list[pd.DataFrame]) -> None:
-#     return None
+def test_merge_dataframes(
+    fake_dataframe: pd.DataFrame,
+    fake_dataframe_with_nulls: pd.DataFrame,
+    fake_dataframe_with_dupes: pd.DataFrame,
+) -> None:
+    test_dict = {
+        "fake_df": fake_dataframe,
+        "fake_df_nulls": fake_dataframe_with_nulls,
+        "fake_df_dupes": fake_dataframe_with_dupes,
+    }
+
+    merged_df = merge_dataframes(test_dict)
+
+    assert isinstance(merged_df, pd.DataFrame)
+    assert merged_df.isnull().sum().sum() > 0
+    assert merged_df.duplicated().sum() > 0
