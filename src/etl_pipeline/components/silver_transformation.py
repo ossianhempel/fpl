@@ -170,10 +170,9 @@ def assert_strictly_sequential_values(
 def assert_continuous_sequential_values(dataframe: pd.DataFrame, column: str) -> bool:
     """Test if column contains a continuous sequence without gaps"""
     df = dataframe.copy()
-    sorted_values = df[column].sort_values(ascending=False).reset_index(drop=True)
-    expected_range = pd.Series(range(sorted_values.min(), sorted_values.max() + 1))
-
-    return bool(sorted_values.equals(expected_range))
+    unique_values = sorted(df[column].unique())
+    expected_range = list(range(min(unique_values), max(unique_values) + 1))
+    return unique_values == expected_range
 
 
 def assert_accepted_ranges(
