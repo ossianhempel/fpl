@@ -65,7 +65,7 @@ class SourceFileIngestor:
         self.logger.info("Minio client was successfully created")
         return self.client
 
-    def download_source_file(self, url: str) -> io.BytesIO | None:
+    def download_source_file(self, url: str) -> io.BytesIO:
         """Download a file from a URL to a specified destination"""
         try:
             self.logger.info(f"Downloading from {url}")
@@ -77,7 +77,7 @@ class SourceFileIngestor:
             return file_content
         except Exception as e:
             self.logger.error(f"Error downloading data: {e}")
-            return None
+            raise
 
     def _validate_data(
         self, data: io.BytesIO, destination_bucket: str, destination_object_path: str
@@ -154,7 +154,7 @@ class SourceFileIngestor:
                 for col in df.columns:
                     if df[col].null_count() > 0:
                         self.logger.info(
-                            f"{col} has {df[col].null_count()} missing values, {(df[col].null_count/len(df))*100}%"
+                            f"{col} has {df[col].null_count()} missing values, {(df[col].null_count()/len(df))*100}%"
                         )
             else:
                 self.logger.info("No null values")
