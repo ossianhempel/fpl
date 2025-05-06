@@ -183,7 +183,7 @@ class TestSourceFileIngestor:
 
     def test_add_gameweek(self, ingestor, valid_gw_data) -> None:
         """Test that gameweek is added as a column"""
-        data_with_gw = ingestor._add_gameweek(valid_gw_data, 5)
+        data_with_gw = ingestor.add_gameweek(valid_gw_data, 5)
         df = pl.read_csv(data_with_gw)
         assert (
             "gw" in df.columns

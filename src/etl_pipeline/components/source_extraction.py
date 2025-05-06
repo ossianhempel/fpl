@@ -1,6 +1,5 @@
 import requests
 from minio import Minio
-from src.utils.minio_utils import create_minio_client
 import logging
 from dotenv import load_dotenv
 import os
@@ -9,7 +8,9 @@ from dataclasses import dataclass
 import polars as pl
 import polars.selectors as cs
 from datetime import datetime
+from typing import Optional
 
+from src.utils.minio_utils import create_minio_client
 from src.config.logging_config import setup_logging
 
 setup_logging()
@@ -32,7 +33,10 @@ class SourceFileIngestor:
     """
 
     def __init__(
-        self, minio_endpoint=None, minio_access_key=None, minio_secret_key=None
+        self,
+        minio_endpoint: Optional[str] = None,
+        minio_access_key: Optional[str] = None,
+        minio_secret_key: Optional[str] = None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.config = SourceFileIngestorConfig()
@@ -61,7 +65,7 @@ class SourceFileIngestor:
         self.logger.info("Minio client was successfully created")
         return self.client
 
-    def download_source_file(self, url: str) -> str | None:
+    def download_source_file(self, url: str) -> io.BytesIO | None:
         """Download a file from a URL to a specified destination"""
         try:
             self.logger.info(f"Downloading from {url}")
@@ -94,7 +98,7 @@ class SourceFileIngestor:
             )
             for obj in objects:
                 if obj.object_name == destination_object_path:
-                    self.logger.error(
+                    self.logger.info(
                         f"The object {obj.object_name} is already present in the destination"
                     )
                     return False
@@ -161,7 +165,7 @@ class SourceFileIngestor:
         # checks are done
         return True
 
-    def _add_metadata(self, data: io.BytesIO) -> io.BytesIO | Exception:
+    def _add_metadata(self, data: io.BytesIO) -> io.BytesIO:
         """Add ingestion metadata to the data"""
         try:
             self.logger.info("Adding ingestion timestamp metadata to source data")
@@ -177,7 +181,8 @@ class SourceFileIngestor:
             self.logger.error(f"Failed to add metadata: {e}")
             raise Exception
 
-    def _add_gameweek(self, data: io.BytesIO, gameweek: int) -> io.BytesIO:
+    def add_gameweek(self, data: io.BytesIO, gameweek: int) -> io.BytesIO:
+        # TODO: doesnt follow principle of interface segregation - not all instances of the class will "need" to use this method, just gw
         try:
             self.logger.info("Adding gameweek column to source data")
             df = pl.read_csv(data)
@@ -277,6 +282,7 @@ if __name__ == "__main__":
         try:
             full_url = f"{base_url}/{season}/gws/gw{week}.csv"
             gw_file = ingestor.download_source_file(full_url)
+            gw_file = ingestor.add_gameweek(data=gw_file, gameweek=week)
             ingestor.load_to_minio(
                 data=gw_file,
                 destination_bucket="bronze",
