@@ -66,6 +66,7 @@ class SourceFileIngestor:
         return self.client
 
     def download_source_file(self, url: str) -> io.BytesIO:
+        # TODO: add retry mechanism, tenacity
         """Download a file from a URL to a specified destination"""
         try:
             self.logger.info(f"Downloading from {url}")
