@@ -32,6 +32,9 @@ class SourceFileIngestor:
     loads it to a Minio bucket.
     """
 
+    # TODO: we need one for GW and one for teams/fixtures (multiple files vs. single files)
+    # TODO: turn into abstract class
+
     def __init__(
         self,
         minio_endpoint: Optional[str] = None,
@@ -266,13 +269,20 @@ if __name__ == "__main__":
 
     season = "2024-25"
 
-    # TODO - fetch teams for the season and add season during ingestion!
     teams_url = f"{BASE_URL}/{season}/teams.csv"
     teams_file = ingestor.download_source_file(teams_url)
     ingestor.load_to_minio(
         data=teams_file,
         destination_bucket="bronze",
         destination_object_path=f"teams/{season}/teams_{season}.csv",
+    )
+
+    fixtures_url = f"{BASE_URL}/{season}/fixtures.csv"
+    fixtures_file = ingestor.download_source_file(teams_url)
+    ingestor.load_to_minio(
+        data=fixtures_file,
+        destination_bucket="bronze",
+        destination_object_path=f"fixtures/{season}/fixtures_{season}.csv",
     )
 
     for week in gameweeks:
