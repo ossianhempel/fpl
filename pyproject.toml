@@ -75,7 +75,7 @@ dependencies = [
     "google-generativeai>=0.8.3",
     "googleapis-common-protos>=1.66.0",
     "graphviz>=0.20.3",
-    "great-expectations>=0.18.19",
+    "great-expectations==1.4.2",
     "greenlet>=3.0.3",
     "griffe>=1.2.0",
     "grpcio>=1.68.1",
@@ -153,7 +153,7 @@ dependencies = [
     "orjson>=3.10.7",
     "overrides>=7.7.0",
     "packaging>=24.1",
-    "pandas>=2.2.2",
+    "pandas<=2.2.0",
     "pandocfilters>=1.5.1",
     "parso>=0.8.4",
     "pathspec>=0.12.1",
@@ -262,6 +262,7 @@ dependencies = [
     "xgboost>=2.1.1",
     "yarl>=1.18.3",
     "zope.interface>=7.0.1",
+    "types-requests>=2.32.0.20250328",
 ]
 
 [project.optional-dependencies]
@@ -280,3 +281,11 @@ dev-dependencies = []
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict = true
+
+[mypy-great_expectations]
+ignore_errors = true
