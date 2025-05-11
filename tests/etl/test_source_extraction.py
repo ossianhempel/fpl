@@ -98,7 +98,9 @@ class TestSourceFileIngestor:
         content = result.read()
         assert content == b"test,data\n1,2\n3,4", "Content didn't have expected format"
 
-    def test_load_to_minio_success(self, ingestor, mock_minio_client):
+    def test_load_to_minio_success(
+        self, ingestor: SourceFileIngestor, mock_minio_client: Minio
+    ) -> None:
         """Test successful upload to MinIO."""
         # Mock data
         test_data = io.BytesIO(b"test,data\n1,2\n3,4")
@@ -120,7 +122,9 @@ class TestSourceFileIngestor:
             mock_minio_client.put_object.call_args[1]["object_name"] == "test_file.csv"
         )
 
-    def test_load_to_minio_create_bucket(self, ingestor, mock_minio_client):
+    def test_load_to_minio_create_bucket(
+        self, ingestor: SourceFileIngestor, mock_minio_client: Minio
+    ) -> None:
         """Test MinIO upload creates bucket if it doesn't exist."""
         # Setup mock to say bucket doesn't exist
         mock_minio_client.bucket_exists.return_value = False
@@ -140,7 +144,9 @@ class TestSourceFileIngestor:
             "bronze"
         )  # when the bucket doesnt exist, it should call the make_bucket method
 
-    def test_load_to_minio_exception(self, ingestor, mock_minio_client):
+    def test_load_to_minio_exception(
+        self, ingestor: SourceFileIngestor, mock_minio_client: Minio
+    ) -> None:
         """Test MinIO upload handles exceptions properly."""
         # Setup mock to raise exception
         mock_minio_client.put_object.side_effect = Exception("Connection error")
@@ -158,7 +164,9 @@ class TestSourceFileIngestor:
         # Verify failure is reported
         assert result is False
 
-    def test_add_metadata(self, ingestor, valid_gw_data):
+    def test_add_metadata(
+        self, ingestor: SourceFileIngestor, valid_gw_data: io.BytesIO
+    ) -> None:
         result = ingestor._add_metadata(data=valid_gw_data)
 
         assert result, "add_metadata function didn't work"
@@ -172,7 +180,9 @@ class TestSourceFileIngestor:
         ), "There are nulls in timestamp column"
         # assert isinstance(df['ingestion_timestamp'], datetime), f"ingestion_timestamp was of type: {df['ingestion_timestamp'].dtype}"
 
-    def test_add_gameweek(self, ingestor, valid_gw_data) -> None:
+    def test_add_gameweek(
+        self, ingestor: SourceFileIngestor, valid_gw_data: io.BytesIO
+    ) -> None:
         """Test that gameweek is added as a column"""
         data_with_gw = ingestor.add_gameweek(valid_gw_data, 5)
         df = pl.read_csv(data_with_gw)
@@ -182,7 +192,12 @@ class TestSourceFileIngestor:
         assert df["gw"].min() == 5, f"Found wrong value for gw: {df['gw'].min()}"
         assert df["gw"].max() == 5, f"Found wrong value for gw: {df['gw'].max()}"
 
-    def test_validate_data(self, mock_minio_client, ingestor, valid_gw_data):
+    def test_validate_data(
+        self,
+        mock_minio_client: Minio,
+        ingestor: SourceFileIngestor,
+        valid_gw_data: io.BytesIO,
+    ) -> None:
         """Test data validation."""
         # Since the implementation always returns True, this is a simple test
         test_data = io.BytesIO(b"test,data\n1,2\n3,4")
