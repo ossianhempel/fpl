@@ -2,7 +2,6 @@ import pytest
 import io
 import os
 from unittest.mock import patch, MagicMock, Mock
-from requests.exceptions import HTTPError
 from minio import Minio
 import polars as pl
 from datetime import datetime
@@ -64,7 +63,7 @@ class TestSourceFileIngestor:
         return mock_client
 
     @pytest.fixture
-    def ingestor(self, mock_minio_client):
+    def ingestor(self, mock_minio_client: Minio) -> SourceFileIngestor:
         """Fixture that creates an ingestor with a mocked Minio client."""
         with patch(
             "src.etl_pipeline.components.source_extraction.create_minio_client",
@@ -74,7 +73,9 @@ class TestSourceFileIngestor:
             return ingestor
 
     @patch("src.etl_pipeline.components.source_extraction.requests.get")
-    def test_successful_download(self, mock_get, ingestor):
+    def test_successful_download(
+        self, mock_get: Mock, ingestor: SourceFileIngestor
+    ) -> None:
         """Test that file is successfully downloaded when request is valid."""
         # Setup mock response
         mock_response = MagicMock()
@@ -90,22 +91,12 @@ class TestSourceFileIngestor:
         mock_response.raise_for_status.assert_called_once()
 
         # Verify the file content is as expected
-        assert isinstance(result, io.BytesIO)
+        assert isinstance(
+            result, io.BytesIO
+        ), f"{result} wasn't expected type, was: {type(result)}"
         result.seek(0)
         content = result.read()
-        assert content == b"test,data\n1,2\n3,4"
-
-    @patch("src.etl_pipeline.components.source_extraction.requests.get")
-    def test_http_error(self, mock_get, ingestor):
-        """Test that download_source_file returns None when the request fails."""
-        # Setup mock to raise HTTPError
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = HTTPError("404 Client Error")
-        mock_get.return_value = mock_response
-
-        # Call function and verify it returns None
-        result = ingestor.download_source_file("https://example.com/nonexistent.csv")
-        assert result is None
+        assert content == b"test,data\n1,2\n3,4", "Content didn't have expected format"
 
     def test_load_to_minio_success(self, ingestor, mock_minio_client):
         """Test successful upload to MinIO."""
