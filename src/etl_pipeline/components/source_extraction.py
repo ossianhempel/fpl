@@ -255,32 +255,28 @@ class SourceFileIngestor:
 if __name__ == "__main__":
     load_dotenv()
 
-    # base_url = (
-    #     "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
-    # )
-    # full_url = f"{base_url}/2024-25/gws/gw2.csv"
-
-    # ingestor = SourceFileIngestor()
-
-    # file = ingestor.download_source_file(full_url)
-
-    # ingestor.load_to_minio(
-    #     data=file, destination_bucket="bronze", destination_object_path="test_file.csv"
-    # )
-
     gameweeks = [num for num in range(40)]
 
     ingestor = SourceFileIngestor()
 
-    base_url = (
+    BASE_URL = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
     )
 
     season = "2024-25"
 
+    # TODO - fetch teams for the season and add season during ingestion!
+    teams_url = f"{BASE_URL}/{season}/teams.csv"
+    teams_file = ingestor.download_source_file(teams_url)
+    ingestor.load_to_minio(
+        data=teams_file,
+        destination_bucket="bronze",
+        destination_object_path=f"teams/{season}/teams_{season}.csv",
+    )
+
     for week in gameweeks:
         try:
-            full_url = f"{base_url}/{season}/gws/gw{week}.csv"
+            full_url = f"{BASE_URL}/{season}/gws/gw{week}.csv"
             gw_file = ingestor.download_source_file(full_url)
             gw_file = ingestor.add_gameweek(data=gw_file, gameweek=week)
             ingestor.load_to_minio(
