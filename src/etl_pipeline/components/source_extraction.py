@@ -9,6 +9,7 @@ import polars as pl
 import polars.selectors as cs
 from datetime import datetime
 from typing import Optional
+from abc import abstractmethod, ABC
 
 from src.utils.minio_utils import create_minio_client
 from src.config.logging_config import setup_logging
@@ -26,7 +27,182 @@ class SourceFileIngestorConfig:
     destination_bucket: str = "bronze"
 
 
-class SourceFileIngestor:
+class SourceFileIngestor(ABC):
+    """
+    An ingestor that downloads a file from an url, adds metadata, and
+    loads it to a Minio bucket.
+    """
+
+    @abstractmethod
+    def __init__(
+        self,
+        minio_endpoint: Optional[str] = None,
+        minio_access_key: Optional[str] = None,
+        minio_secret_key: Optional[str] = None,
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def _create_minio_client(self) -> Minio:
+        """Creates a Minio client object using a utility function"""
+        pass
+
+    @abstractmethod
+    def download_source_file(self, url: str) -> io.BytesIO:
+        """Download a file from a URL to a specified destination"""
+        pass
+
+    @abstractmethod
+    def _add_metadata(self, data: io.BytesIO) -> io.BytesIO:
+        """Add ingestion metadata to the data"""
+        pass
+
+    @abstractmethod
+    def load_to_minio(
+        self, data: io.BytesIO, destination_bucket: str, destination_object_path: str
+    ) -> bool:
+        """Upload data to MinIO"""
+        pass
+
+
+class DimensionFileIngestor(SourceFileIngestor):
+    """
+    An ingestor that downloads a file from an url, adds metadata, and
+    loads it to a Minio bucket.
+    """
+
+    # TODO: we need one for GW and one for teams/fixtures (multiple files vs. single files)
+    # TODO: turn into abstract class
+
+    def __init__(
+        self,
+        minio_endpoint: Optional[str] = None,
+        minio_access_key: Optional[str] = None,
+        minio_secret_key: Optional[str] = None,
+    ) -> None:
+        self.logger = logging.getLogger(__name__)
+        self.config = SourceFileIngestorConfig()
+        # allow overwrite ingestorConfig if credentials are passed manually to object (typically for remote deployment) - otherwise it will just use local dataclass config
+        self.client = self._create_minio_client()
+        if minio_endpoint:
+            self.config.minio_endpoint = minio_endpoint
+        if minio_access_key:
+            self.config.minio_access_key = minio_access_key
+        if minio_secret_key:
+            self.config.minio_secret_key = minio_secret_key
+
+        self.logger.info(f"Using MinIO endpoint: {self.config.minio_endpoint}")
+
+    def _create_minio_client(self) -> Minio:
+        """Creates a Minio client object using a utility function"""
+        try:
+            self.client = create_minio_client(
+                endpoint=self.config.minio_endpoint,
+                access_key=self.config.minio_access_key,
+                secret_key=self.config.minio_secret_key,
+            )
+        except Exception as e:
+            self.logger.error(f"Minio client failed to be created: {e}")
+            raise Exception
+        self.logger.info("Minio client was successfully created")
+        return self.client
+
+    def download_source_file(self, url: str) -> io.BytesIO:
+        # TODO: add retry mechanism, tenacity
+        """Download a file from a URL to a specified destination"""
+        try:
+            self.logger.info(f"Downloading from {url}")
+            response = requests.get(url)
+            response.raise_for_status()
+
+            # create in-memory file object
+            file_content = io.BytesIO(response.content)
+            return file_content
+        except Exception as e:
+            self.logger.error(f"Error downloading data: {e}")
+            raise
+
+    def _add_metadata(self, data: io.BytesIO) -> io.BytesIO:
+        """Add ingestion metadata to the data"""
+        try:
+            self.logger.info("Adding ingestion timestamp metadata to source data")
+            df = pl.read_csv(data)
+            df = df.with_columns(pl.lit(datetime.now()).alias("ingestion_timestamp"))
+
+            # convert back to BytesIO
+            buffer = io.BytesIO()
+            df.write_csv(buffer)
+            buffer.seek(0)
+            return buffer
+        except Exception as e:
+            self.logger.error(f"Failed to add metadata: {e}")
+            raise Exception
+
+    def add_gameweek(self, data: io.BytesIO, gameweek: int) -> io.BytesIO:
+        # TODO: doesnt follow principle of interface segregation - not all instances of the class will "need" to use this method, just gw
+        # TODO: move/add this to silver transformation
+        try:
+            self.logger.info("Adding gameweek column to source data")
+            df = pl.read_csv(data)
+            df = df.with_columns(pl.lit(value=gameweek).alias("gw"))
+
+            # convert back to bytes
+            buffer = io.BytesIO()  # initialise in-memory file-like object
+            df.write_csv(buffer)  # write the df as csv format to the buffer
+            buffer.seek(
+                0
+            )  # reset position to beginning so the next read won't start at the end
+            return buffer
+        except Exception as e:
+            self.logger.error(f"Failed to add gameweek column: {e}")
+            raise
+
+    def load_to_minio(
+        self, data: io.BytesIO, destination_bucket: str, destination_object_path: str
+    ) -> bool:
+        """Upload data to MinIO"""
+
+        # reset buffer position
+        data.seek(0)
+
+        try:
+            self.logger.info("Adding metadata..")
+            data = self._add_metadata(data)
+        except Exception as e:
+            self.logger.error(f"Failed to add metadata: {e}")
+            raise Exception
+
+        try:
+            # reset buffer position
+            data.seek(0)
+            file_size = data.getbuffer().nbytes
+
+            # ensure bucket exists
+            if not self.client.bucket_exists(destination_bucket):
+                self.logger.warning(
+                    f"Bucket {destination_bucket} does not exist. Creating it."
+                )
+                self.client.make_bucket(destination_bucket)
+
+            # upload data
+            self.logger.info(
+                f"Uploading to Minio: {destination_bucket}/{destination_object_path}"
+            )
+            self.client.put_object(
+                bucket_name=destination_bucket,
+                object_name=destination_object_path,
+                data=data,
+                content_type="application/csv",
+                length=file_size,
+            )
+
+            return True
+        except Exception as e:
+            self.logger.error(f"Error uploading to MinIO: {e}")
+            return False
+
+
+class GameweekIngestor(SourceFileIngestor):
     """
     An ingestor that downloads a file from an url, adds metadata, and
     loads it to a Minio bucket.
@@ -186,7 +362,7 @@ class SourceFileIngestor:
             raise Exception
 
     def add_gameweek(self, data: io.BytesIO, gameweek: int) -> io.BytesIO:
-        # TODO: doesnt follow principle of interface segregation - not all instances of the class will "need" to use this method, just gw
+        # TODO: move/add this to silver transformation
         try:
             self.logger.info("Adding gameweek column to source data")
             df = pl.read_csv(data)
@@ -216,7 +392,9 @@ class SourceFileIngestor:
             destination_bucket=destination_bucket,
             destination_object_path=destination_object_path,
         ):
-            self.logger.error("Validation failed, upload canceled")
+            self.logger.error(
+                "Validation failed or object was already present, upload canceled"
+            )
             raise Exception
 
         try:
@@ -256,12 +434,18 @@ class SourceFileIngestor:
             return False
 
 
+def validate_source_data() -> bool:
+    # TODO: to be triggered before silver ingestion starts
+    return True
+
+
 if __name__ == "__main__":
     load_dotenv()
 
     gameweeks = [num for num in range(40)]
 
-    ingestor = SourceFileIngestor()
+    gw_ingestor = GameweekIngestor()
+    dimension_ingestor = DimensionFileIngestor()
 
     BASE_URL = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/"
@@ -270,16 +454,16 @@ if __name__ == "__main__":
     season = "2024-25"
 
     teams_url = f"{BASE_URL}/{season}/teams.csv"
-    teams_file = ingestor.download_source_file(teams_url)
-    ingestor.load_to_minio(
+    teams_file = dimension_ingestor.download_source_file(teams_url)
+    dimension_ingestor.load_to_minio(
         data=teams_file,
         destination_bucket="bronze",
         destination_object_path=f"teams/{season}/teams_{season}.csv",
     )
 
     fixtures_url = f"{BASE_URL}/{season}/fixtures.csv"
-    fixtures_file = ingestor.download_source_file(teams_url)
-    ingestor.load_to_minio(
+    fixtures_file = dimension_ingestor.download_source_file(teams_url)
+    dimension_ingestor.load_to_minio(
         data=fixtures_file,
         destination_bucket="bronze",
         destination_object_path=f"fixtures/{season}/fixtures_{season}.csv",
@@ -288,9 +472,9 @@ if __name__ == "__main__":
     for week in gameweeks:
         try:
             full_url = f"{BASE_URL}/{season}/gws/gw{week}.csv"
-            gw_file = ingestor.download_source_file(full_url)
-            gw_file = ingestor.add_gameweek(data=gw_file, gameweek=week)
-            ingestor.load_to_minio(
+            gw_file = gw_ingestor.download_source_file(full_url)
+            gw_file = gw_ingestor.add_gameweek(data=gw_file, gameweek=week)
+            gw_ingestor.load_to_minio(
                 data=gw_file,
                 destination_bucket="bronze",
                 destination_object_path=f"gameweeks/{season}/gw_{season}_gw{week}.csv",
