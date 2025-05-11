@@ -1,11 +1,16 @@
 from prefect import task
 from prefect import get_run_logger
 from prefect.blocks.system import Secret
-from typing import Optional
+from typing import Optional, Callable
 import pandas as pd
-from src.etl_pipeline.components.source_extraction import SourceFileIngestor
+from minio import Minio
+from src.etl_pipeline.components.source_extraction import (
+    GameweekIngestor,
+    DimensionFileIngestor,
+)
 from src.etl_pipeline.components.silver_transformation import (
     fetch_bronze_data,
+    SilverTransformationConfig,
 )
 
 
@@ -29,7 +34,7 @@ def download_teams(
         "minio_access_key": minio_access_key,
         "minio_secret_key": minio_secret_key,
     }
-    ingestor = SourceFileIngestor(**creds)
+    ingestor = DimensionFileIngestor(**creds)
 
     BASE_URL = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data"
@@ -66,7 +71,7 @@ def download_gws(
         "minio_access_key": minio_access_key,
         "minio_secret_key": minio_secret_key,
     }
-    ingestor = SourceFileIngestor(**creds)
+    ingestor = GameweekIngestor(**creds)
 
     base_url = (
         "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data"
@@ -89,7 +94,13 @@ def download_gws(
 
 
 @task
-def get_data_from_bronze(client, config, fetch_function) -> pd.DataFrame:
+def get_data_from_bronze(
+    client: Minio,
+    config: SilverTransformationConfig,
+    fetch_function: Callable[
+        [Minio, str, str, str, str], Optional[dict[str, pd.DataFrame]]
+    ],
+) -> pd.DataFrame:
     logger = get_run_logger()
     logger.info("Fetching files from Bronze layer...")
     fetch_bronze_data(client=client, config=config, fetch_function=fetch_function)
@@ -120,7 +131,7 @@ def transform_gameweeks() -> pd.DataFrame:
 def validate_gameweeks() -> bool:
     # use gx
     # parse json and return true/false depending on results
-    pass
+    return True
 
 
 @task
