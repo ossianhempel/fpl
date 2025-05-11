@@ -4,7 +4,7 @@ from io import BytesIO
 from src.prefect_files.tasks.fpl_tasks import download_gws
 
 
-@patch("src.prefect_files.tasks.fpl_tasks.SourceFileIngestor")
+@patch("src.prefect_files.tasks.fpl_tasks.GameweekIngestor")
 def test_download_gws(mock_ingestor_class):
     with disable_run_logger():
         # configure mock class to return our mock instance
