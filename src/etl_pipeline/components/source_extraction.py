@@ -138,6 +138,21 @@ class DimensionFileIngestor(SourceFileIngestor):
             self.logger.error(f"Failed to add metadata: {e}")
             raise Exception
 
+    def add_season_column(self, data: io.BytesIO, season: str) -> io.BytesIO:
+        try:
+            self.logger.info("Adding season column to source data")
+            df = pl.read_csv(data)
+            df = df.with_columns(pl.lit(season).alias("season"))
+
+            # convert back to BytesIO
+            buffer = io.BytesIO()
+            df.write_csv(buffer)
+            buffer.seek(0)
+            return buffer
+        except Exception as e:
+            self.logger.error(f"Failed to add season column: {e}")
+            raise Exception
+
     def add_gameweek(self, data: io.BytesIO, gameweek: int) -> io.BytesIO:
         # TODO: doesnt follow principle of interface segregation - not all instances of the class will "need" to use this method, just gw
         # TODO: move/add this to silver transformation
@@ -455,6 +470,9 @@ if __name__ == "__main__":
 
     teams_url = f"{BASE_URL}/{season}/teams.csv"
     teams_file = dimension_ingestor.download_source_file(teams_url)
+
+    teams_file = dimension_ingestor.add_season_column(data=teams_file, season=season)
+
     dimension_ingestor.load_to_minio(
         data=teams_file,
         destination_bucket="bronze",
