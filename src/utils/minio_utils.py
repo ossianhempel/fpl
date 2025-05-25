@@ -147,16 +147,17 @@ def fetch_from_minio(
 # TODO: refactor for clarity, currently it feetches all with the assumption of them being csv compatible and of a certain format
 # TODO: should be able to specify a path to a folder (if we want to fetch from just a subfolder within a bucket)
 def fetch_all_from_minio(
-    client: Minio, endpoint: str, access_key: str, secret_key: str, bucket_name: str
+    client: Minio,
+    bucket_name: str,
+    folder_path: Optional[str] = None,
 ) -> Optional[Dict[str, pd.DataFrame]]:
     """
-    Fetch all CSV files from a MinIO bucket and return them as a dictionary of DataFrames.
+    Fetch all CSV files from a MinIO bucket (optionally within a folder) and return them as a dictionary of DataFrames.
 
     Args:
-        endpoint (str): MinIO server endpoint.
-        access_key (str): Access key for MinIO.
-        secret_key (str): Secret key for MinIO.
+        client (Minio): MinIO client object.
         bucket_name (str): Name of the bucket to fetch objects from.
+        folder_path (Optional[str]): Path to the folder within the bucket (default: None, fetches from root).
 
     Returns:
         Optional[Dict[str, pd.DataFrame]]: A dictionary mapping object names to DataFrames,
@@ -166,7 +167,8 @@ def fetch_all_from_minio(
     dataframes = {}
 
     try:
-        objects = client.list_objects(bucket_name, recursive=True)
+        prefix = folder_path.strip("/") + "/" if folder_path else ""
+        objects = client.list_objects(bucket_name, prefix=prefix, recursive=True)
         for obj in objects:
             try:
                 response = client.get_object(bucket_name, obj.object_name)
@@ -176,7 +178,7 @@ def fetch_all_from_minio(
 
                     # handle empty or header-only
                     if data_str.count("\n") <= 1:
-                        print(f"Empty file or header-only: {obj.object_name}")
+                        logger.info(f"Empty file or header-only: {obj.object_name}")
                         if data_str:
                             headers = data_str.split("\n")[0].split(",")
                             dataframes[obj.object_name] = pd.DataFrame(columns=headers)
