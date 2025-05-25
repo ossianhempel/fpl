@@ -146,7 +146,7 @@ openai==1.59.3
 orjson==3.10.7
 overrides==7.7.0
 packaging==24.1
-pandas==2.2.2
+pandas<=2.2.0
 pandocfilters==1.5.1
 parso==0.8.4
 pathspec==0.12.1
