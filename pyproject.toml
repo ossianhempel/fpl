@@ -75,7 +75,7 @@ dependencies = [
     "google-generativeai>=0.8.3",
     "googleapis-common-protos>=1.66.0",
     "graphviz>=0.20.3",
-    "great-expectations==1.4.2",
+    "great-expectations>=1.4.2",
     "greenlet>=3.0.3",
     "griffe>=1.2.0",
     "grpcio>=1.68.1",
@@ -147,13 +147,13 @@ dependencies = [
     "nodeenv>=1.9.1",
     "notebook>=7.2.2",
     "notebook_shim>=0.2.4",
-    "numpy>=1.26.4",
+    "numpy>=1.26.4,<2.0.0",
     "oauthlib>=3.2.2",
     "openai>=1.59.3",
     "orjson>=3.10.7",
     "overrides>=7.7.0",
     "packaging>=24.1",
-    "pandas<=2.2.0",
+    "pandas>=1.3.0,<2.2",
     "pandocfilters>=1.5.1",
     "parso>=0.8.4",
     "pathspec>=0.12.1",
@@ -185,9 +185,9 @@ dependencies = [
     "pyasn1_modules>=0.4.0",
     "pycparser>=2.22",
     "pycryptodome>=3.20.0",
-    "pydantic==2.10.6",
-    "pydantic-settings==2.8.1",
-    "pydantic-core==2.27.2",
+    "pydantic>=2.10.6",
+    "pydantic-settings>=2.8.1",
+    "pydantic-core>=2.27.2",
     "pydeck>=0.9.1",
     "Pygments>=2.18.0",
     "pyparsing>=3.1.3",
@@ -262,13 +262,13 @@ dependencies = [
     "xgboost>=2.1.1",
     "yarl>=1.18.3",
     "zope.interface>=7.0.1",
-    "types-requests>=2.32.0.20250328",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
     "flake8",
+    "types-requests>=2.32.0.20250328",
 ]
 
 [build-system]

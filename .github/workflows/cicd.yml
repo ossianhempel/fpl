@@ -29,21 +29,19 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: "3.12"
     
-    - name: Install uv and create virtual env
+    - name: Install uv
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
         # Add uv to the PATH for subsequent steps
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH # Adjust if install path differs
-        uv venv -p python
         
     - name: Install Dependencies
       run: |
-        source .venv/bin/activate
-        uv pip install ".[dev]"
+        uv sync --dev
 
     # - name: Lint with flake8
     #   run: |
@@ -55,8 +53,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        source .venv/bin/activate
-        pytest
+        uv run pytest
 
   deploy-prefect-flow:
     runs-on: ubuntu-latest
@@ -66,7 +63,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       
@@ -75,19 +72,15 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           # Add uv to the PATH for subsequent steps
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH # Adjust if install path differs
-          uv venv -p python
 
       - name: Install Dependencies
         run: |
-          source .venv/bin/activate
-          uv pip install "."
+          uv sync
         
       - name: Configure Prefect
         run: |
-          source .venv/bin/activate
-          prefect config set PREFECT_API_URL=${{ secrets.PREFECT_API_URL }}
-          prefect config set PREFECT_API_KEY=${{ secrets.PREFECT_API_KEY }}
+          uv run prefect config set PREFECT_API_URL=${{ secrets.PREFECT_API_URL }}
+          uv run prefect config set PREFECT_API_KEY=${{ secrets.PREFECT_API_KEY }}
       - name: Deploy Prefect Flow
         run: |
-          source .venv/bin/activate
-          prefect deploy --prefect-file src/prefect_files/prefect.yaml
+          uv run prefect deploy --prefect-file src/prefect_files/prefect.yaml
