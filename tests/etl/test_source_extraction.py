@@ -8,12 +8,12 @@ from datetime import datetime
 
 # Import the class to test
 from src.etl_pipeline.components.source_extraction import (
-    SourceFileIngestor,
+    GameweekIngestor,
 )
 
 
-class TestSourceFileIngestor:
-    """Test cases for the SourceFileIngestor class."""
+class TestGameweekIngestor:
+    """Test cases for the GameweekIngestor class."""
 
     @pytest.fixture
     def data_dir(self) -> str:
@@ -63,18 +63,18 @@ class TestSourceFileIngestor:
         return mock_client
 
     @pytest.fixture
-    def ingestor(self, mock_minio_client: Minio) -> SourceFileIngestor:
+    def ingestor(self, mock_minio_client: Minio) -> GameweekIngestor:
         """Fixture that creates an ingestor with a mocked Minio client."""
         with patch(
             "src.etl_pipeline.components.source_extraction.create_minio_client",
             return_value=mock_minio_client,
         ):
-            ingestor = SourceFileIngestor()
+            ingestor = GameweekIngestor()
             return ingestor
 
     @patch("src.etl_pipeline.components.source_extraction.requests.get")
     def test_successful_download(
-        self, mock_get: Mock, ingestor: SourceFileIngestor
+        self, mock_get: Mock, ingestor: GameweekIngestor
     ) -> None:
         """Test that file is successfully downloaded when request is valid."""
         # Setup mock response
@@ -99,7 +99,7 @@ class TestSourceFileIngestor:
         assert content == b"test,data\n1,2\n3,4", "Content didn't have expected format"
 
     def test_load_to_minio_success(
-        self, ingestor: SourceFileIngestor, mock_minio_client: Minio
+        self, ingestor: GameweekIngestor, mock_minio_client: Minio
     ) -> None:
         """Test successful upload to MinIO."""
         # Mock data
@@ -123,7 +123,7 @@ class TestSourceFileIngestor:
         )
 
     def test_load_to_minio_create_bucket(
-        self, ingestor: SourceFileIngestor, mock_minio_client: Minio
+        self, ingestor: GameweekIngestor, mock_minio_client: Minio
     ) -> None:
         """Test MinIO upload creates bucket if it doesn't exist."""
         # Setup mock to say bucket doesn't exist
@@ -145,7 +145,7 @@ class TestSourceFileIngestor:
         )  # when the bucket doesnt exist, it should call the make_bucket method
 
     def test_load_to_minio_exception(
-        self, ingestor: SourceFileIngestor, mock_minio_client: Minio
+        self, ingestor: GameweekIngestor, mock_minio_client: Minio
     ) -> None:
         """Test MinIO upload handles exceptions properly."""
         # Setup mock to raise exception
@@ -165,7 +165,7 @@ class TestSourceFileIngestor:
         assert result is False
 
     def test_add_metadata(
-        self, ingestor: SourceFileIngestor, valid_gw_data: io.BytesIO
+        self, ingestor: GameweekIngestor, valid_gw_data: io.BytesIO
     ) -> None:
         result = ingestor._add_metadata(data=valid_gw_data)
 
@@ -181,7 +181,7 @@ class TestSourceFileIngestor:
         # assert isinstance(df['ingestion_timestamp'], datetime), f"ingestion_timestamp was of type: {df['ingestion_timestamp'].dtype}"
 
     def test_add_gameweek(
-        self, ingestor: SourceFileIngestor, valid_gw_data: io.BytesIO
+        self, ingestor: GameweekIngestor, valid_gw_data: io.BytesIO
     ) -> None:
         """Test that gameweek is added as a column"""
         data_with_gw = ingestor.add_gameweek(valid_gw_data, 5)
@@ -194,8 +194,7 @@ class TestSourceFileIngestor:
 
     def test_validate_data(
         self,
-        mock_minio_client: Minio,
-        ingestor: SourceFileIngestor,
+        ingestor: GameweekIngestor,
         valid_gw_data: io.BytesIO,
     ) -> None:
         """Test data validation."""
