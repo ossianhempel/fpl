@@ -8,20 +8,20 @@ from src.etl_pipeline.components.source_extraction import (
     GameweekIngestor,
     DimensionFileIngestor,
 )
-from src.etl_pipeline.components.silver_transformation import (
+from src.etl_pipeline.components.bronze_to_silver_utils import (
     fetch_bronze_data,
     SilverTransformationConfig,
 )
 
 
 @task
-def get_minio_secret() -> Optional[str]:
+def get_minio_secret_task() -> Optional[str]:
     secret_block = Secret.load("fpl-minio-secret-key")
     return str(secret_block.get())  # casting it as string for type safety
 
 
 @task
-def download_teams(
+def download_teams_task(
     season: str = "2024-25",
     minio_endpoint: Optional[str] = None,
     minio_access_key: Optional[str] = None,
@@ -55,7 +55,7 @@ def download_teams(
 
 
 @task
-def download_fixtures(
+def download_fixtures_task(
     season: str = "2024-25",
     minio_endpoint: Optional[str] = None,
     minio_access_key: Optional[str] = None,
@@ -89,7 +89,7 @@ def download_fixtures(
 
 
 @task
-def download_gws(
+def download_gws_task(
     season: str = "2024-25",
     minio_endpoint: Optional[str] = None,
     minio_access_key: Optional[str] = None,
@@ -128,7 +128,7 @@ def download_gws(
 
 
 @task
-def get_data_from_bronze(
+def get_data_from_bronze_task(
     client: Minio,
     config: SilverTransformationConfig,
     fetch_function: Callable[
@@ -141,7 +141,14 @@ def get_data_from_bronze(
 
 
 @task
-def transform_fixtures() -> pd.DataFrame:
+def transform_teams_task() -> pd.DataFrame:
+    logger = get_run_logger()
+    logger.info("Transforming teams...")
+    pass
+
+
+@task
+def transform_fixtures_task() -> pd.DataFrame:
     logger = get_run_logger()
     logger.info("Transforming fixtures...")
     pass
@@ -155,23 +162,23 @@ def validate_fixtures() -> bool:
 
 
 @task
-def transform_gameweeks() -> pd.DataFrame:
+def transform_gameweeks_task() -> pd.DataFrame:
     logger = get_run_logger()
     logger.info("Transforming gameweeks...")
     pass
 
 
 @task
-def validate_gameweeks() -> bool:
+def validate_gameweeks_task() -> bool:
     # use gx
     # parse json and return true/false depending on results
     return True
 
 
 @task
-def load_data_to_silver() -> None:
+def load_data_to_silver_task() -> None:
     pass
 
 
 if __name__ == "__main__":
-    download_gws()
+    download_gws_task()

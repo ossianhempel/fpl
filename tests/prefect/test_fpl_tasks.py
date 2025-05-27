@@ -1,18 +1,18 @@
 from unittest.mock import Mock, patch
 from prefect.logging import disable_run_logger
 from io import BytesIO
-from src.prefect_files.tasks.fpl_tasks import download_gws
+from src.prefect_files.tasks.fpl_tasks import download_gws_task
 
 
 @patch("src.prefect_files.tasks.fpl_tasks.GameweekIngestor")
-def test_download_gws(mock_ingestor_class):
+def test_download_gws_task(mock_ingestor_class: Mock) -> None:
     with disable_run_logger():
         # configure mock class to return our mock instance
         mock_instance = Mock()
         mock_instance.download_source_file.return_value = BytesIO(b"mock,csv,data")
         mock_ingestor_class.return_value = mock_instance
 
-        result = download_gws.fn(
+        result = download_gws_task.fn(
             season="2023-24",
             minio_endpoint="test-endpoint",
             minio_access_key="test-access",
