@@ -28,9 +28,7 @@ def test_fetch_all_from_minio_handles_real_gameweeks_data(test_data_path: str) -
         mock_response.release_conn = MagicMock()
         mock_client.get_object.return_value = mock_response
 
-        result = fetch_all_from_minio(
-            mock_client, "test-endpoint", "test-key", "test-secret", "gameweeks"
-        )
+        result = fetch_all_from_minio(mock_client, "bronze", "fixtures")
 
         assert result is not None
         assert isinstance(result, dict)
@@ -72,9 +70,7 @@ def test_fetch_all_from_minio_handles_real_teams_data(test_data_path: str) -> No
         mock_response.release_conn = MagicMock()
         mock_client.get_object.return_value = mock_response
 
-        result = fetch_all_from_minio(
-            mock_client, "test-endpoint", "test-key", "test-secret", "teams"
-        )
+        result = fetch_all_from_minio(mock_client, "bronze", "teams")
 
         assert result is not None
 
@@ -99,9 +95,7 @@ def test_fetch_all_from_minio_handles_empty_files() -> None:
         mock_response.release_conn = MagicMock()
         mock_client.get_object.return_value = mock_response
 
-        result = fetch_all_from_minio(
-            mock_client, "test-endpoint", "test-key", "test-secret", "gameweeks"
-        )
+        result = fetch_all_from_minio(mock_client, "bronze", "gameweeks")
 
         assert result is not None
         assert isinstance(result, dict)
@@ -130,9 +124,7 @@ def test_fetch_all_from_minio_handles_completely_empty_file() -> None:
         mock_response.release_conn = MagicMock()
         mock_client.get_object.return_value = mock_response
 
-        result = fetch_all_from_minio(
-            mock_client, "test-endpoint", "test-key", "test-secret", "test-bucket"
-        )
+        result = fetch_all_from_minio(mock_client, "test-bucket", "test_folder")
         assert result is None
 
 
@@ -143,7 +135,9 @@ def test_fetch_all_from_minio_handles_connection_error() -> None:
         mock_minio.side_effect = Exception("Connection failed")
 
         result = fetch_all_from_minio(
-            mock_client, "test-endpoint", "test-key", "test-secret", "test-bucket"
+            mock_client,
+            "test-bucket",
+            "test_folder",
         )
         assert result is None
 
@@ -168,7 +162,9 @@ def test_fetch_all_from_minio_handles_valid_files() -> None:
         mock_client.get_object.return_value = mock_response
 
         result = fetch_all_from_minio(
-            mock_client, "test-endpoint", "test-key", "test-secret", "test-bucket"
+            mock_client,
+            "test-bucket",
+            "test-folder",
         )
         assert result is not None
         assert isinstance(result, dict)
