@@ -48,10 +48,15 @@ def transform_teams(teams_df: pd.DataFrame) -> pd.DataFrame:
         initial_rows = len(df)
 
         df = drop_unnecessary_columns(df, ["modified"])
-        # df = rename_teams_columns(df)
+        df = rename_teams_columns(df)
         df = remove_duplicate_columns(df)
+        df = remove_dupes(df)
 
-        critical_columns = {"id": "int", "team_name": "str", "season": "str"}
+        critical_columns = {
+            "seasonal_team_id": "int",
+            "team_name": "str",
+            "season": "str",
+        }
         df, rows_dropped = convert_critical_columns(df, critical_columns)
         log_rows_dropped(rows_dropped, initial_rows, len(df))
 
@@ -126,8 +131,6 @@ if __name__ == "__main__":
 
     for key, df in teams_dfs.items():
         df = rename_teams_columns(df)
-        df = remove_duplicate_columns(df)
-        df = remove_dupes(df)
 
         assert assert_accepted_ranges(
             dataframe=df, column="seasonal_team_id", min=0, max=20
