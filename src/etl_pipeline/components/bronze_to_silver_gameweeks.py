@@ -51,11 +51,26 @@ def identify_opponent_team(group: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_opponent_team_column(df: pd.DataFrame) -> pd.DataFrame:
-    if "seasonal_fixture_id" in df.columns:
-        df = df.groupby(
-            ["kickoff_time", "seasonal_fixture_id"], group_keys=False
-        ).apply(identify_opponent_team)
+    is_input_empty = df.empty
+
+    # define grouping columns
+    grouping_cols = ["kickoff_time", "seasonal_fixture_id"]
+
+    # check if all necessary columns for grouping are present
+    if all(col in df.columns for col in grouping_cols):
+        if not is_input_empty:
+            # if the dataframe is not empty, apply the grouping and function
+            df = df.groupby(grouping_cols, group_keys=False).apply(
+                identify_opponent_team
+            )
+        else:
+            # if the dataframe is empty but grouping columns are present,
+            # pandas groupby().apply() on an empty df might not add a new column from the applied function to the schema.
+            # explicitly add the 'opponent_team' column to the empty dataframe.
+            df["opponent_team"] = pd.Series(dtype=object)
     else:
+        # if grouping columns are missing, set opponent_team to none for all rows.
+        # this will add the 'opponent_team' column if it doesn't exist.
         df["opponent_team"] = None
     return df
 
@@ -73,7 +88,7 @@ def transform_gameweeks(dataframe: pd.DataFrame) -> pd.DataFrame:
         df = dataframe.copy()
         initial_rows = len(df)
 
-        df = drop_unnecessary_columns(df, ["modified"])
+        df = drop_unnecessary_columns(df, ["modified", "round"])
         df = rename_gameweek_columns(df)
         df = remove_duplicate_columns(df)
 
@@ -85,10 +100,11 @@ def transform_gameweeks(dataframe: pd.DataFrame) -> pd.DataFrame:
             "season": "str",
         }
         df, rows_dropped = convert_critical_columns(df, critical_columns)
+        df = add_season_column(
+            df
+        )  # needs to come after critical columns are converted due to datetime conversion
 
         df = handle_boolean_columns(df, ["was_home", "player_started"])
-        df = add_season_column(df)
-        df = drop_unnecessary_columns(df, ["round"])
         df = add_opponent_team_column(df)
 
         log_rows_dropped(rows_dropped, initial_rows, len(df))
@@ -139,6 +155,7 @@ if __name__ == "__main__":
     )
 
     expected_cols_gw = [
+        # "season", # added after expected columns are validated
         "gameweek",
         "assists",
         "bonus",
