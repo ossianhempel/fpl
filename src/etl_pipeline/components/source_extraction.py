@@ -470,9 +470,7 @@ if __name__ == "__main__":
 
     teams_url = f"{BASE_URL}/{season}/teams.csv"
     teams_file = dimension_ingestor.download_source_file(teams_url)
-
     teams_file = dimension_ingestor.add_season_column(data=teams_file, season=season)
-
     dimension_ingestor.load_to_minio(
         data=teams_file,
         destination_bucket="bronze",
@@ -480,7 +478,7 @@ if __name__ == "__main__":
     )
 
     fixtures_url = f"{BASE_URL}/{season}/fixtures.csv"
-    fixtures_file = dimension_ingestor.download_source_file(teams_url)
+    fixtures_file = dimension_ingestor.download_source_file(fixtures_url)
     dimension_ingestor.load_to_minio(
         data=fixtures_file,
         destination_bucket="bronze",
