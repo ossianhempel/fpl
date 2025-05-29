@@ -20,6 +20,7 @@ from src.etl_pipeline.components.bronze_to_silver_utils import (
     add_season_column,
     drop_unnecessary_columns,
     log_rows_dropped,
+    load_to_silver,
 )
 
 from src.etl_pipeline.components.bronze_to_silver_teams import (
@@ -311,3 +312,12 @@ if __name__ == "__main__":
 
     print(transformed_fixtures.head())
     print(transformed_fixtures.columns)
+
+    destination_path = "fixtures/fixtures_silver.parquet"
+
+    load_to_silver(
+        dataframe=transformed_fixtures,
+        bucket_name=config.destination_bucket,
+        object_name=destination_path,
+        client=client,
+    )

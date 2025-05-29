@@ -19,15 +19,10 @@ from src.etl_pipeline.components.bronze_to_silver_utils import (
     drop_unnecessary_columns,
     log_rows_dropped,
     assert_strictly_sequential_values,
+    load_to_silver,
 )
 
-
-# create logger for the module
-# setup_logging()
 logger = logging.getLogger(__name__)
-
-
-# TODO: add season to teams (logic is in manual script)
 
 
 def rename_teams_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -154,3 +149,12 @@ if __name__ == "__main__":
     transformed_teams = transform_teams(teams_df=merged_teams)
 
     print(transformed_teams.head())
+
+    destination_path = "teams/teams_silver.parquet"
+
+    load_to_silver(
+        dataframe=transformed_teams,
+        bucket_name=config.destination_bucket,
+        object_name=destination_path,
+        client=client,
+    )
