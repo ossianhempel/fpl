@@ -8,3 +8,4 @@ alwaysApply: true
 - Write comments in all lowercase unless it's a docstring
 - Use relevant logging in the code
 - we have `setup_logging()` for configuring the logging
+- Run all/relevant tests (pytest) after making changes
