@@ -20,6 +20,7 @@ from src.etl_pipeline.components.bronze_to_silver_utils import (
     handle_boolean_columns,
     add_season_column,
     log_rows_dropped,
+    load_to_silver,
 )
 
 
@@ -236,3 +237,12 @@ if __name__ == "__main__":
     transformed_gw = transform_gameweeks(dataframe=merged_gw)
 
     print(transformed_gw.head())
+
+    destination_path = "gameweeks/gameweeks_silver.parquet"
+
+    load_to_silver(
+        dataframe=transformed_gw,
+        bucket_name=config.destination_bucket,
+        object_name=destination_path,
+        client=client,
+    )
