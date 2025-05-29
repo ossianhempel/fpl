@@ -12,11 +12,8 @@ from typing import Optional
 from abc import abstractmethod, ABC
 
 from src.utils.minio_utils import create_minio_client
-from src.config.logging_config import setup_logging
 
-setup_logging()
-
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -77,7 +74,7 @@ class DimensionFileIngestor(SourceFileIngestor):
         minio_access_key: Optional[str] = None,
         minio_secret_key: Optional[str] = None,
     ) -> None:
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__name__)  # TODO: bad practice
         self.config = SourceFileIngestorConfig()
         # allow overwrite ingestorConfig if credentials are passed manually to object (typically for remote deployment) - otherwise it will just use local dataclass config
         self.client = self._create_minio_client()
