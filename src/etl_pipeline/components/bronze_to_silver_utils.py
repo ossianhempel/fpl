@@ -4,6 +4,8 @@ from minio import Minio
 import logging
 import os
 from dataclasses import dataclass
+import polars as pl
+import io
 
 from src.utils.minio_utils import fetch_all_from_minio
 from src.config.logging_config import setup_logging
@@ -337,6 +339,46 @@ def log_rows_dropped(
         logger.info(f"Final rows: {final_rows} (Started with {initial_rows})")
 
 
-def load_to_silver(dataframe: pd.DataFrame, bucket_folder_path: str) -> None:
-    # upload to silver bucket (with correct path) as parquet
-    pass
+def load_to_silver(
+    dataframe: pd.DataFrame | pl.DataFrame,
+    bucket_name: str,
+    object_name: str,
+    client: Minio,
+) -> None:
+    # upload to silver bucket as parquet
+
+    buffer = io.BytesIO()
+    if isinstance(dataframe, pd.DataFrame):
+        dataframe.to_parquet(buffer, index=False)
+        buffer.seek(0)
+        logger.debug(f"Pandas dataframe size: {buffer.getbuffer().nbytes}")
+    elif isinstance(dataframe, pl.DataFrame):
+        dataframe.write_parquet(buffer)
+        buffer.seek(0)
+        logger.debug(f"Polars dataframe size: {buffer.getbuffer().nbytes}")
+
+    file_size = buffer.getbuffer().nbytes
+
+    try:
+        if isinstance(dataframe, pd.DataFrame):
+            client.put_object(
+                bucket_name=bucket_name,
+                object_name=object_name,
+                data=buffer,
+                content_type="application/parquet",
+                length=file_size,
+            )
+
+            logger.info(f"Uploaded pandas dataframe to {bucket_name}/{object_name}")
+        elif isinstance(dataframe, pl.DataFrame):
+            client.put_object(
+                bucket_name=bucket_name,
+                object_name=object_name,
+                data=buffer,
+                content_type="application/parquet",
+                length=file_size,
+            )
+            logger.info(f"Uploaded polars dataframe to {bucket_name}/{object_name}")
+    except Exception as e:
+        logger.error(f"Error uploading dataframe to {bucket_name}/{object_name}: {e}")
+        raise
