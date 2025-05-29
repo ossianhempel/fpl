@@ -6,9 +6,7 @@ import pandas as pd
 import csv
 from typing import Optional, Dict
 import logging
-from src.config.logging_config import setup_logging
 
-setup_logging()
 logger = logging.getLogger(__name__)
 
 
