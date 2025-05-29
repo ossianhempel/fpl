@@ -1,10 +1,10 @@
 from unittest.mock import Mock, patch
 from prefect.logging import disable_run_logger
 from io import BytesIO
-from src.prefect_files.tasks.fpl_tasks import download_gws_task
+from src.prefect_files.tasks.fpl_source_extraction_tasks import download_gws_task
 
 
-@patch("src.prefect_files.tasks.fpl_tasks.GameweekIngestor")
+@patch("src.prefect_files.tasks.fpl_source_extraction_tasks.GameweekIngestor")
 def test_download_gws_task(mock_ingestor_class: Mock) -> None:
     with disable_run_logger():
         # configure mock class to return our mock instance

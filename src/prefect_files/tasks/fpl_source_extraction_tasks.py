@@ -1,23 +1,9 @@
 from prefect import task
-from prefect import get_run_logger
-from prefect.blocks.system import Secret
-from typing import Optional, Callable
-import pandas as pd
-from minio import Minio
+from typing import Optional
 from src.etl_pipeline.components.source_extraction import (
     GameweekIngestor,
     DimensionFileIngestor,
 )
-from src.etl_pipeline.components.bronze_to_silver_utils import (
-    fetch_bronze_data,
-    SilverTransformationConfig,
-)
-
-
-@task
-def get_minio_secret_task() -> Optional[str]:
-    secret_block = Secret.load("fpl-minio-secret-key")
-    return str(secret_block.get())  # casting it as string for type safety
 
 
 @task
@@ -44,6 +30,7 @@ def download_teams_task(
 
     try:
         teams_file = ingestor.download_source_file(teams_url)
+        teams_file = ingestor.add_season_column(data=teams_file, season=season)
         ingestor.load_to_minio(
             data=teams_file,
             destination_bucket="bronze",
@@ -125,59 +112,6 @@ def download_gws_task(
             print(f"{full_url} successfully ingested")
         except Exception as e:
             print(f"Ran into an error: {e}")
-
-
-@task
-def get_data_from_bronze_task(
-    client: Minio,
-    config: SilverTransformationConfig,
-    fetch_function: Callable[
-        [Minio, str, str, str, str], Optional[dict[str, pd.DataFrame]]
-    ],
-) -> pd.DataFrame:
-    logger = get_run_logger()
-    logger.info("Fetching files from Bronze layer...")
-    fetch_bronze_data(client=client, config=config, fetch_function=fetch_function)
-
-
-@task
-def transform_teams_task() -> pd.DataFrame:
-    logger = get_run_logger()
-    logger.info("Transforming teams...")
-    pass
-
-
-@task
-def transform_fixtures_task() -> pd.DataFrame:
-    logger = get_run_logger()
-    logger.info("Transforming fixtures...")
-    pass
-
-
-@task
-def validate_fixtures() -> bool:
-    # use gx
-    # parse json and return true/false depending on results
-    return True
-
-
-@task
-def transform_gameweeks_task() -> pd.DataFrame:
-    logger = get_run_logger()
-    logger.info("Transforming gameweeks...")
-    pass
-
-
-@task
-def validate_gameweeks_task() -> bool:
-    # use gx
-    # parse json and return true/false depending on results
-    return True
-
-
-@task
-def load_data_to_silver_task() -> None:
-    pass
 
 
 if __name__ == "__main__":
