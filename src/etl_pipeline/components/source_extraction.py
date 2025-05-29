@@ -71,9 +71,6 @@ class DimensionFileIngestor(SourceFileIngestor):
     loads it to a Minio bucket.
     """
 
-    # TODO: we need one for GW and one for teams/fixtures (multiple files vs. single files)
-    # TODO: turn into abstract class
-
     def __init__(
         self,
         minio_endpoint: Optional[str] = None,
@@ -222,9 +219,6 @@ class GameweekIngestor(SourceFileIngestor):
     An ingestor that downloads a file from an url, adds metadata, and
     loads it to a Minio bucket.
     """
-
-    # TODO: we need one for GW and one for teams/fixtures (multiple files vs. single files)
-    # TODO: turn into abstract class
 
     def __init__(
         self,
