@@ -34,7 +34,9 @@ def fetch_bronze_data(
     """
     Fetches all raw files from a given bucket in the bronze layer
     """
-    logger.info(f"Initiating fetching of raw data from bucket: {config.source_bucket}")
+    logger.info(
+        f"Initiating fetching of raw data from bucket: {config.source_bucket}/{folder}"
+    )
     try:
         dfs = fetch_function(
             client,
@@ -43,9 +45,11 @@ def fetch_bronze_data(
         )
         if dfs is None or len(dfs) == 0:
             logger.error("Fetch operation returned None instead of dataframes")
-            raise Exception("No data could fetched from gameweeks bucket")
+            raise Exception(
+                f"No data could fetched from bucket: {config.source_bucket}"
+            )
 
-        logger.info(f"Number of gameweek dataframes fetched: {len(dfs)}")
+        logger.info(f"Number of dataframes fetched: {len(dfs)}")
         return dfs
     except Exception as e:
         logger.error(f"Error occurred: {e}", exc_info=True)
@@ -64,25 +68,38 @@ def validate_expected_columns(
     sorted_expected_cols = sorted(expected_columns)
 
     if not sorted_actual_cols == sorted_expected_cols:
-        symmetric_difference = list(set(sorted_actual_cols) ^ set(sorted_expected_cols))
+        # Find columns that are expected but not present
+        missing_cols = set(sorted_expected_cols) - set(sorted_actual_cols)
+        # Find columns that are present but not expected
+        unexpected_cols = set(sorted_actual_cols) - set(sorted_expected_cols)
+        logger.info(f"Expected columns: {sorted_expected_cols}")
+        logger.info(f"Actual columns: {sorted_actual_cols}")
         logger.info(
-            f"Expected: \n{sorted_expected_cols} \nReceived: \n{sorted_actual_cols}"
+            f"\nColumns expected but not present: \n{sorted(list(missing_cols))}"
         )
-        logger.info(f"\nColumns that are unique to each list: {symmetric_difference}")
+        logger.info(
+            f"Columns present but not expected: \n{sorted(list(unexpected_cols))}"
+        )
+
         # attempt to drop columns that aren't present in expected columns, then check again
         try:
             logger.info(
-                f"Dropping columns that aren't expected: {symmetric_difference}"
+                f"Dropping columns that aren't expected: {sorted(list(unexpected_cols))}"
             )
             df = dataframe.copy()
-            df.drop(symmetric_difference, axis=1, inplace=True)
+            df.drop(list(unexpected_cols), axis=1, inplace=True)
             actual_cols = list(df.columns)
             sorted_actual_cols = sorted(actual_cols)
-            symmetric_difference = list(
-                set(sorted_actual_cols) ^ set(sorted_expected_cols)
+
+            # Recalculate missing columns after dropping unexpected ones
+            missing_cols = set(sorted_expected_cols) - set(sorted_actual_cols)
+            logger.info(
+                f"\nColumns expected but not present: {sorted(list(missing_cols))}"
             )
 
-            assert sorted_actual_cols == sorted_expected_cols
+            assert (
+                sorted_actual_cols == sorted_expected_cols
+            ), "Validation failed after dropping unexpected columns"
         except Exception as e:
             logger.error(f"Retried validation failed: {e}")
 
@@ -266,13 +283,11 @@ def handle_boolean_columns(
                             "TRUE": True,
                             "1": True,
                             1: True,
-                            True: True,
                             "False": False,
                             "false": False,
                             "FALSE": False,
                             "0": False,
                             0: False,
-                            False: False,
                             "not_a_bool": False,
                             pd.NA: False,
                             None: False,
@@ -287,7 +302,7 @@ def handle_boolean_columns(
     return df
 
 
-def determine_season(date: pd.Timestamp) -> Optional[str]:
+def determine_season(date: pd.Timestamp | pd.DatetimeIndex) -> Optional[str]:
     if pd.isna(date):
         return None
     year = date.year
@@ -297,8 +312,12 @@ def determine_season(date: pd.Timestamp) -> Optional[str]:
         return f"{year - 1}-{str(year)[-2:]}"
 
 
-def add_season_column(df: pd.DataFrame) -> pd.DataFrame:
-    df["season"] = df["kickoff_time"].apply(determine_season)
+def add_season_column(
+    df: pd.DataFrame,
+    season_column_name: str = "season",
+    date_column_name: str = "kickoff_time",
+) -> pd.DataFrame:
+    df[season_column_name] = df[date_column_name].apply(determine_season)
     return df
 
 
