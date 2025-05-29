@@ -8,11 +8,9 @@ import polars as pl
 import io
 
 from src.utils.minio_utils import fetch_all_from_minio
-from src.config.logging_config import setup_logging
 
 
 # create logger for the module
-setup_logging()
 logger = logging.getLogger(__name__)
 
 
