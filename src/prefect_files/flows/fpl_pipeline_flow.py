@@ -15,6 +15,7 @@ from src.prefect_files.tasks.fpl_bronze_to_silver_tasks import (
     get_data_from_bronze_task,
     load_to_silver_task,
     transform_fixtures_task,
+    transform_gameweeks_task,
 )
 
 from src.prefect_files.tasks.fpl_util_tasks import (
@@ -83,22 +84,34 @@ def fpl_pipeline_flow() -> None:
         client=client,
     )
 
-    # validate fixtures with gx
-    # TODO: upload fixtures
-
     # *********************
     # GAMEWEEKS
     # *********************
 
-    # TODO: transform gameweeks
-    # TODO: validate gameweeks with gx
-    # TODO: upload gameweeks
+    gameweeks = get_data_from_bronze_task(
+        client=client,
+        config=config,
+        folder="gameweeks",
+    )
+
+    # transform gameweeks
+    transformed_gameweeks = transform_gameweeks_task(gw_dfs=gameweeks)
+
+    # load gameweeks to silver
+    load_to_silver_task(
+        transformed_df=transformed_gameweeks,
+        config=config,
+        folder="gameweeks",
+        client=client,
+    )
+
+    # TODO: GX data quality checks
 
     # TODO: bronze -> silver transformation
 
-    # TODO: silver -> gold transformation (is this DBT modeling?)
+    # TODO: silver -> gold transformation
 
-    # TODO: DBT Core modeling
+    # TODO: gold -> dimensional modelling w/ DBT
 
 
 if __name__ == "__main__":

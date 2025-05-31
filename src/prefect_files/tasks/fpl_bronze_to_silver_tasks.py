@@ -30,6 +30,11 @@ from src.etl_pipeline.components.bronze_to_silver_fixtures import (
     rename_fixtures_columns,
 )
 
+from src.etl_pipeline.components.bronze_to_silver_gameweeks import (
+    transform_gameweeks,
+    rename_gameweek_columns,
+)
+
 
 @task
 def get_data_from_bronze_task(
@@ -196,10 +201,94 @@ def validate_fixtures() -> bool:
 
 
 @task
-def transform_gameweeks_task() -> pd.DataFrame:
+def transform_gameweeks_task(
+    gw_dfs: dict[str, pd.DataFrame | pl.DataFrame],
+) -> pd.DataFrame | pl.DataFrame:
     logger = get_run_logger()
     logger.info("Transforming gameweeks...")
-    pass
+
+    expected_cols_gw = [
+        # "season", # added after expected columns are validated
+        "gameweek",
+        "assists",
+        "bonus",
+        "bps",
+        "clean_sheets",
+        "creativity",
+        "element",
+        "expected_assists",
+        "expected_goal_involvements",
+        "expected_goals",
+        "expected_goals_conceded",
+        "seasonal_fixture_id",
+        "goals_conceded",
+        "goals_scored",
+        "ict_index",
+        "influence",
+        "ingestion_timestamp",
+        "kickoff_time",
+        "minutes_played",
+        # "modified",
+        "player_name",
+        "opponent_team",
+        "own_goals",
+        "penalties_missed",
+        "penalties_saved",
+        "position",
+        "red_cards",
+        "round",
+        "saves",
+        "selected",
+        "player_started",
+        "team",
+        "team_a_score",
+        "team_h_score",
+        "threat",
+        "total_points",
+        "transfers_balance",
+        "transfers_in",
+        "transfers_out",
+        "player_cost",
+        "was_home",
+        "xP",
+        "yellow_cards",
+    ]
+    important_cols = [
+        "seasonal_fixture_id",
+        "kickoff_time",
+        "player_name",
+        "team",
+        "opponent_team",
+        "total_points",
+        "position",
+    ]
+    key_cols = [
+        "kickoff_time",
+        "player_name",
+        "team",
+    ]
+
+    for key, df in gw_dfs.items():
+        df = rename_gameweek_columns(df)
+
+        assert validate_expected_columns(
+            df, expected_columns=expected_cols_gw
+        ), "Expected columns validation failed"
+        assert validate_important_columns(
+            df, important_columns=important_cols
+        ), "Important column validation failed"
+        assert validate_key_columns(
+            df, key_columns=key_cols, composite_key=True
+        ), "Key column validation failed"
+        df = remove_dupes(df)
+        assert assert_accepted_ranges(dataframe=df, column="gameweek", min=1, max=39)
+
+        gw_dfs[key] = df  # Save back to original dictionary
+
+    merged_gw = merge_dataframes(gw_dfs)
+    transformed_gw = transform_gameweeks(dataframe=merged_gw)
+
+    return transformed_gw
 
 
 @task
