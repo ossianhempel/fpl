@@ -14,6 +14,7 @@ from src.prefect_files.tasks.fpl_bronze_to_silver_tasks import (
     transform_teams_task,
     get_data_from_bronze_task,
     load_to_silver_task,
+    transform_fixtures_task,
 )
 
 from src.prefect_files.tasks.fpl_util_tasks import (
@@ -24,7 +25,7 @@ from src.prefect_files.tasks.fpl_util_tasks import (
 setup_logging()
 logger = logging.getLogger(__name__)
 
-
+# TODO: make this a parameter or dynamic based on date
 season = "2024-25"
 
 
@@ -42,6 +43,9 @@ def fpl_pipeline_flow() -> None:
 
     config = SilverTransformationConfig()
 
+    # *********************
+    # TEAMS
+    # *********************
     # fetch teams from bronze
     teams = get_data_from_bronze_task(
         client=client,
@@ -53,11 +57,42 @@ def fpl_pipeline_flow() -> None:
     transformed_teams = transform_teams_task(teams_dfs=teams)
 
     # load teams to silver
-    load_to_silver_task(transformed_teams, config, "teams", client)
+    load_to_silver_task(
+        transformed_df=transformed_teams, config=config, folder="teams", client=client
+    )
 
-    # TODO: transform fixtures
-    # TODO: validate fixtures with gx
+    # *********************
+    # FIXTURES
+    # *********************
+    fixtures = get_data_from_bronze_task(
+        client=client,
+        config=config,
+        folder="fixtures",
+    )
+
+    # transform fixtures
+    transformed_fixtures = transform_fixtures_task(
+        fixture_dfs=fixtures, transformed_teams_df=transformed_teams
+    )
+
+    # load fixtures to silver
+    load_to_silver_task(
+        transformed_df=transformed_fixtures,
+        config=config,
+        folder="fixtures",
+        client=client,
+    )
+
+    # validate fixtures with gx
     # TODO: upload fixtures
+
+    # *********************
+    # GAMEWEEKS
+    # *********************
+
+    # TODO: transform gameweeks
+    # TODO: validate gameweeks with gx
+    # TODO: upload gameweeks
 
     # TODO: bronze -> silver transformation
 

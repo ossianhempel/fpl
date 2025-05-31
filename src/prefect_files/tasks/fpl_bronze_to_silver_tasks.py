@@ -2,7 +2,7 @@ from prefect import task
 from prefect import get_run_logger
 import pandas as pd
 from minio import Minio
-
+import polars as pl
 
 from src.utils.minio_utils import fetch_all_from_minio
 from src.etl_pipeline.components.bronze_to_silver_utils import (
@@ -23,6 +23,11 @@ from src.etl_pipeline.components.bronze_to_silver_utils import (
 from src.etl_pipeline.components.bronze_to_silver_teams import (
     transform_teams,
     rename_teams_columns,
+)
+
+from src.etl_pipeline.components.bronze_to_silver_fixtures import (
+    transform_fixtures,
+    rename_fixtures_columns,
 )
 
 
@@ -116,10 +121,70 @@ def transform_teams_task(teams_dfs: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 
 @task
-def transform_fixtures_task() -> pd.DataFrame:
+def transform_fixtures_task(
+    fixture_dfs: dict[str, pd.DataFrame | pl.DataFrame],
+    transformed_teams_df: pd.DataFrame | pl.DataFrame,
+) -> pd.DataFrame | pl.DataFrame:
     logger = get_run_logger()
     logger.info("Transforming fixtures...")
-    pass
+
+    EXPECTED_FIXTURES_COLS = [
+        "fixture_code",
+        "gameweek",
+        "fixture_completed",
+        "ingestion_timestamp",
+        "seasonal_fixture_id",
+        "finished",
+        "kickoff_time",
+        "minutes",
+        "provisional_start_time",
+        "started",
+        "away_team_id",
+        "away_team_score",
+        "home_team_id",
+        "home_team_score",
+        "away_team_difficulty",
+        "home_team_difficulty",
+        "home_team_name",
+        "away_team_name",
+    ]
+
+    IMPORTANT_FIXTURES_COLS = [
+        "gameweek",
+        "away_team_id",
+        "home_team_id",
+        "kickoff_time",
+    ]
+    KEY_FIXTURES_COLS = [
+        "kickoff_time",
+        "gameweek",
+        "away_team_id",
+        "home_team_id",
+    ]
+
+    for key, df in fixture_dfs.items():
+        df = rename_fixtures_columns(df)
+
+        assert validate_important_columns(
+            df, important_columns=IMPORTANT_FIXTURES_COLS
+        ), "Important column validation failed"
+        assert validate_key_columns(
+            df, key_columns=KEY_FIXTURES_COLS, composite_key=True
+        ), "Key column validation failed"
+        assert assert_accepted_ranges(dataframe=df, column="gameweek", min=1, max=39)
+
+        fixture_dfs[key] = df  # Save back to original dictionary
+
+    merged_fixtures = merge_dataframes(fixture_dfs)
+    transformed_fixtures = transform_fixtures(
+        fixtures_df=merged_fixtures, teams_df=transformed_teams_df
+    )
+
+    assert validate_expected_columns(
+        transformed_fixtures, expected_columns=EXPECTED_FIXTURES_COLS
+    ), "Expected columns validation failed"
+
+    return transformed_fixtures
 
 
 @task
