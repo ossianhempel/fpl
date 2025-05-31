@@ -3,6 +3,7 @@ from prefect import get_run_logger
 import pandas as pd
 from minio import Minio
 import polars as pl
+from prefect.cache_policies import NONE
 
 from src.utils.minio_utils import fetch_all_from_minio
 from src.etl_pipeline.components.bronze_to_silver_utils import (
@@ -299,17 +300,17 @@ def validate_gameweeks_task() -> bool:
     return True
 
 
-@task
+@task(cache_policy=NONE)
 def load_to_silver_task(
-    transformed_df: pd.DataFrame,
+    transformed_df: pd.DataFrame | pl.DataFrame,
     config: SilverTransformationConfig,
-    folder: str,
+    object_path: str,
     client: Minio,
 ) -> None:
     load_to_silver(
         dataframe=transformed_df,
         bucket_name=config.destination_bucket,
-        object_name=folder,
+        object_name=object_path,
         client=client,
     )
 
