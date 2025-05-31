@@ -59,7 +59,10 @@ def fpl_pipeline_flow() -> None:
 
     # load teams to silver
     load_to_silver_task(
-        transformed_df=transformed_teams, config=config, folder="teams", client=client
+        transformed_df=transformed_teams,
+        config=config,
+        object_path="teams/teams_silver.parquet",
+        client=client,
     )
 
     # *********************
@@ -80,7 +83,7 @@ def fpl_pipeline_flow() -> None:
     load_to_silver_task(
         transformed_df=transformed_fixtures,
         config=config,
-        folder="fixtures",
+        object_path="fixtures/fixtures_silver.parquet",
         client=client,
     )
 
@@ -101,7 +104,7 @@ def fpl_pipeline_flow() -> None:
     load_to_silver_task(
         transformed_df=transformed_gameweeks,
         config=config,
-        folder="gameweeks",
+        object_path="gameweeks/gameweeks_silver.parquet",
         client=client,
     )
 
