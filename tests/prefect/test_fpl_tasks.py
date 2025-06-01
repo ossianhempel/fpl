@@ -40,7 +40,7 @@ def test_download_gws_task(mock_ingestor_class: Mock) -> None:
 
         # verify load_to_minio was called correctly
         assert any(
-            call[1]["destination_bucket"] == "bronze"
+            call[1]["destination_bucket"] == "bronze-lake"
             and "gameweeks/2023-24/gw_2023-24_gw" in call[1]["destination_object_path"]
             for call in mock_instance.load_to_minio.call_args_list
         )
