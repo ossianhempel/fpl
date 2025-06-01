@@ -16,12 +16,13 @@ from src.utils.minio_utils import create_minio_client
 logger = logging.getLogger(__name__)
 
 
+# TODO - move to config
 @dataclass
 class SourceFileIngestorConfig:
     minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "COULDNT GET ENV VAR")
     minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "COULDNT GET ENV VAR")
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "COULDNT GET ENV VAR")
-    destination_bucket: str = "bronze"
+    destination_bucket: str = "bronze-lake"
 
 
 class SourceFileIngestor(ABC):
@@ -187,6 +188,7 @@ class DimensionFileIngestor(SourceFileIngestor):
             file_size = data.getbuffer().nbytes
 
             # ensure bucket exists
+            # TODO - this doesnt seemt to function properly
             if not self.client.bucket_exists(destination_bucket):
                 self.logger.warning(
                     f"Bucket {destination_bucket} does not exist. Creating it."
@@ -464,7 +466,7 @@ if __name__ == "__main__":
     teams_file = dimension_ingestor.add_season_column(data=teams_file, season=season)
     dimension_ingestor.load_to_minio(
         data=teams_file,
-        destination_bucket="bronze",
+        destination_bucket=SourceFileIngestorConfig.destination_bucket,
         destination_object_path=f"teams/{season}/teams_{season}.csv",
     )
 
@@ -472,7 +474,7 @@ if __name__ == "__main__":
     fixtures_file = dimension_ingestor.download_source_file(fixtures_url)
     dimension_ingestor.load_to_minio(
         data=fixtures_file,
-        destination_bucket="bronze",
+        destination_bucket=SourceFileIngestorConfig.destination_bucket,
         destination_object_path=f"fixtures/{season}/fixtures_{season}.csv",
     )
 
@@ -483,7 +485,7 @@ if __name__ == "__main__":
             gw_file = gw_ingestor.add_gameweek(data=gw_file, gameweek=week)
             gw_ingestor.load_to_minio(
                 data=gw_file,
-                destination_bucket="bronze",
+                destination_bucket=SourceFileIngestorConfig.destination_bucket,
                 destination_object_path=f"gameweeks/{season}/gw_{season}_gw{week}.csv",
             )
         except Exception as e:

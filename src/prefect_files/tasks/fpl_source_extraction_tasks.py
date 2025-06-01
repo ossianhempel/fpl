@@ -4,6 +4,7 @@ from src.etl_pipeline.components.source_extraction import (
     GameweekIngestor,
     DimensionFileIngestor,
 )
+from src.etl_pipeline.components.source_extraction import SourceFileIngestorConfig
 
 
 @task
@@ -33,7 +34,7 @@ def download_teams_task(
         teams_file = ingestor.add_season_column(data=teams_file, season=season)
         ingestor.load_to_minio(
             data=teams_file,
-            destination_bucket="bronze",
+            destination_bucket=SourceFileIngestorConfig.destination_bucket,
             destination_object_path=f"teams/{season}/teams_{season}.csv",
         )
         print(f"{teams_url} successfully ingested")
@@ -67,7 +68,7 @@ def download_fixtures_task(
         fixtures_file = ingestor.download_source_file(fixtures_url)
         ingestor.load_to_minio(
             data=fixtures_file,
-            destination_bucket="bronze",
+            destination_bucket=SourceFileIngestorConfig.destination_bucket,
             destination_object_path=f"fixtures/{season}/fixtures_{season}.csv",
         )
         print(f"{fixtures_url} successfully ingested")
@@ -106,7 +107,7 @@ def download_gws_task(
             gw_file = ingestor.add_gameweek(data=gw_file, gameweek=week)
             ingestor.load_to_minio(
                 data=gw_file,
-                destination_bucket="bronze",
+                destination_bucket=SourceFileIngestorConfig.destination_bucket,
                 destination_object_path=f"gameweeks/{season}/gw_{season}_gw{week}.csv",
             )
             print(f"{full_url} successfully ingested")
