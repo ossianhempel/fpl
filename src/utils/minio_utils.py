@@ -14,12 +14,11 @@ logger = logging.getLogger(__name__)
 # TODO: raise error if failing to create client
 def create_minio_client(endpoint: str, access_key: str, secret_key: str) -> Minio:
     """Connect to MinIO and create a client, with detailed error logging"""
-    print(
-        f"Creating MinIO client with endpoint: {endpoint}, access_key: {access_key}, secret_key: {secret_key}"
+    logger.info(
+        f"Creating MinIO client with endpoint: {endpoint}, access_key: {access_key}"
     )
+    logger.info(f"Attempting to connect to MinIO at endpoint: {endpoint}")  # Debug log
     try:
-        print(f"Attempting to connect to MinIO at endpoint: {endpoint}")  # Debug log
-
         if not all([endpoint, access_key, secret_key]):
             raise Exception(
                 "Missing credentials:",
