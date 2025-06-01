@@ -6,14 +6,13 @@ from src.prefect_files.tasks.fpl_source_extraction_tasks import (
     download_teams_task,
     download_fixtures_task,
 )
-from src.utils.etl_utils import (
-    SilverTransformationConfig,
-)
+
+from src.config.config import SilverTransformationConfig
 
 from src.prefect_files.tasks.fpl_bronze_to_silver_tasks import (
     transform_teams_task,
     get_data_from_bronze_task,
-    load_to_silver_task,
+    load_to_lake_task,
     transform_fixtures_task,
     transform_gameweeks_task,
 )
@@ -58,7 +57,7 @@ def fpl_pipeline_flow() -> None:
     transformed_teams = transform_teams_task(teams_dfs=teams)
 
     # load teams to silver
-    load_to_silver_task(
+    load_to_lake_task(
         transformed_df=transformed_teams,
         config=config,
         object_path="teams/teams_silver.parquet",
@@ -80,7 +79,7 @@ def fpl_pipeline_flow() -> None:
     )
 
     # load fixtures to silver
-    load_to_silver_task(
+    load_to_lake_task(
         transformed_df=transformed_fixtures,
         config=config,
         object_path="fixtures/fixtures_silver.parquet",
@@ -101,7 +100,7 @@ def fpl_pipeline_flow() -> None:
     transformed_gameweeks = transform_gameweeks_task(gw_dfs=gameweeks)
 
     # load gameweeks to silver
-    load_to_silver_task(
+    load_to_lake_task(
         transformed_df=transformed_gameweeks,
         config=config,
         object_path="gameweeks/gameweeks_silver.parquet",

@@ -6,9 +6,9 @@ import polars as pl
 from prefect.cache_policies import NONE
 
 from src.utils.minio_utils import fetch_all_from_minio
+from src.config.config import SilverTransformationConfig, GoldTransformationConfig
 from src.utils.etl_utils import (
-    fetch_bronze_data,
-    SilverTransformationConfig,
+    fetch_lake_data,
 )
 from src.utils.etl_utils import (
     assert_accepted_ranges,
@@ -18,7 +18,7 @@ from src.utils.etl_utils import (
     validate_key_columns,
     remove_dupes,
     merge_dataframes,
-    load_to_silver,
+    load_to_lake,
 )
 
 from src.etl_pipeline.components.bronze_to_silver_teams import (
@@ -45,7 +45,7 @@ def get_data_from_bronze_task(
 ) -> dict[str, pd.DataFrame]:
     logger = get_run_logger()
     logger.info("Fetching files from Bronze layer...")
-    return fetch_bronze_data(
+    return fetch_lake_data(
         client=client,
         config=config,
         fetch_function=fetch_all_from_minio,
@@ -300,14 +300,15 @@ def validate_gameweeks_task() -> bool:
     return True
 
 
+# TODO - move to task utils
 @task(cache_policy=NONE)
-def load_to_silver_task(
+def load_to_lake_task(
     transformed_df: pd.DataFrame | pl.DataFrame,
-    config: SilverTransformationConfig,
+    config: SilverTransformationConfig | GoldTransformationConfig,
     object_path: str,
     client: Minio,
 ) -> None:
-    load_to_silver(
+    load_to_lake(
         dataframe=transformed_df,
         bucket_name=config.destination_bucket,
         object_name=object_path,
