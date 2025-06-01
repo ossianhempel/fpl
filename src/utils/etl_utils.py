@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Optional, Callable
-from minio import Minio
+from minio import Minio, S3Error
 import logging
 import polars as pl
 import io
@@ -337,37 +337,55 @@ def load_to_lake(
     # upload to silver bucket as parquet
 
     buffer = io.BytesIO()
+    # Handle dataframe serialization
     if isinstance(dataframe, pd.DataFrame):
         dataframe.to_parquet(buffer, index=False)
-        buffer.seek(0)
-        logger.debug(f"Pandas dataframe size: {buffer.getbuffer().nbytes}")
+        df_type = "pandas"
     elif isinstance(dataframe, pl.DataFrame):
         dataframe.write_parquet(buffer)
-        buffer.seek(0)
-        logger.debug(f"Polars dataframe size: {buffer.getbuffer().nbytes}")
+        df_type = "polars"
+    else:
+        raise ValueError(f"Unsupported dataframe type: {type(dataframe)}")
 
+    if not bucket_name or not object_name:
+        raise ValueError("bucket_name and object_name cannot be empty")
+
+    if dataframe.empty:  # works for both pandas and polars
+        logger.warning("Uploading empty dataframe")
+
+    buffer.seek(0)
     file_size = buffer.getbuffer().nbytes
+    logger.debug(f"{df_type} dataframe size: {file_size} bytes")
 
     try:
-        if isinstance(dataframe, pd.DataFrame):
-            client.put_object(
-                bucket_name=bucket_name,
-                object_name=object_name,
-                data=buffer,
-                content_type="application/parquet",
-                length=file_size,
-            )
+        client.put_object(
+            bucket_name=bucket_name,
+            object_name=object_name,
+            data=buffer,
+            content_type="application/parquet",
+            length=file_size,
+        )
+        logger.info(f"Uploaded {df_type} dataframe to {bucket_name}/{object_name}")
 
-            logger.info(f"Uploaded pandas dataframe to {bucket_name}/{object_name}")
-        elif isinstance(dataframe, pl.DataFrame):
-            client.put_object(
-                bucket_name=bucket_name,
-                object_name=object_name,
-                data=buffer,
-                content_type="application/parquet",
-                length=file_size,
-            )
-            logger.info(f"Uploaded polars dataframe to {bucket_name}/{object_name}")
-    except Exception as e:
-        logger.error(f"Error uploading dataframe to {bucket_name}/{object_name}: {e}")
+    except S3Error as e:
+        logger.error(
+            f"MinIO client error uploading to {bucket_name}/{object_name}: {e}"
+        )
         raise
+    except Exception as e:
+        logger.error(f"Unexpected error uploading to {bucket_name}/{object_name}: {e}")
+        raise
+
+
+if __name__ == "__main__":
+    test_df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+    load_to_lake(
+        test_df,
+        "test-bucket",
+        "test-object",
+        Minio(
+            endpoint="http://localhost:9000",
+            access_key="minio-fpl",
+            secret_key="minio-fpl",
+        ),
+    )
