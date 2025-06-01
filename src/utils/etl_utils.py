@@ -2,40 +2,31 @@ import pandas as pd
 from typing import Optional, Callable
 from minio import Minio
 import logging
-import os
-from dataclasses import dataclass
 import polars as pl
 import io
-
+from src.config.config import SilverTransformationConfig, GoldTransformationConfig
 from src.utils.minio_utils import fetch_all_from_minio
 
 
 # create logger for the module
 logger = logging.getLogger(__name__)
 
-
-@dataclass
-class SilverTransformationConfig:
-    minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "COULDNT GET ENV VAR")
-    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "COULDNT GET ENV VAR")
-    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "COULDNT GET ENV VAR")
-    source_bucket: str = "bronze"
-    destination_bucket: str = "silver"
+# TODO - move to util directory
 
 
 def fetch_bronze_data(
     client: Minio,
-    config: SilverTransformationConfig,
+    config: SilverTransformationConfig | GoldTransformationConfig,
     fetch_function: Callable[
         [Minio, str, str | None], Optional[dict[str, pd.DataFrame]]
     ] = fetch_all_from_minio,  # injecting util function
     folder: Optional[str] = None,
 ) -> dict[str, pd.DataFrame]:
     """
-    Fetches all raw files from a given bucket in the bronze layer
+    Fetches all files from a given bucket in the bronze/silver/gold layer
     """
     logger.info(
-        f"Initiating fetching of raw data from bucket: {config.source_bucket}/{folder}"
+        f"Initiating fetching of data from bucket: {config.source_bucket}/{folder}"
     )
     try:
         dfs = fetch_function(

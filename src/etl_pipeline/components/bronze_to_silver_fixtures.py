@@ -5,7 +5,7 @@ import os
 
 from src.utils.minio_utils import fetch_all_from_minio
 from src.utils.minio_utils import create_minio_client
-from src.etl_pipeline.components.bronze_to_silver_utils import (
+from src.utils.etl_utils import (
     fetch_bronze_data,
     SilverTransformationConfig,
     validate_expected_columns,

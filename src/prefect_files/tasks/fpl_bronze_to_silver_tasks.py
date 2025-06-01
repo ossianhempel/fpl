@@ -6,11 +6,11 @@ import polars as pl
 from prefect.cache_policies import NONE
 
 from src.utils.minio_utils import fetch_all_from_minio
-from src.etl_pipeline.components.bronze_to_silver_utils import (
+from src.utils.etl_utils import (
     fetch_bronze_data,
     SilverTransformationConfig,
 )
-from src.etl_pipeline.components.bronze_to_silver_utils import (
+from src.utils.etl_utils import (
     assert_accepted_ranges,
     assert_strictly_sequential_values,
     validate_expected_columns,

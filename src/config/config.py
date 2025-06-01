@@ -124,3 +124,21 @@ class PipelineConfig(BaseConfig):
             ), "fixtures_config is required for fixtures data_type"
 
         return True
+
+
+@dataclass
+class SilverTransformationConfig:
+    minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "COULDNT GET ENV VAR")
+    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "COULDNT GET ENV VAR")
+    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "COULDNT GET ENV VAR")
+    source_bucket: str = "bronze"
+    destination_bucket: str = "silver"
+
+
+@dataclass
+class GoldTransformationConfig:
+    minio_endpoint: str = os.getenv("MINIO_ENDPOINT", "COULDNT GET ENV VAR")
+    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY", "COULDNT GET ENV VAR")
+    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY", "COULDNT GET ENV VAR")
+    source_bucket: str = "silver"
+    destination_bucket: str = "gold"

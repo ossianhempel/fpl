@@ -6,7 +6,7 @@ from src.prefect_files.tasks.fpl_source_extraction_tasks import (
     download_teams_task,
     download_fixtures_task,
 )
-from src.etl_pipeline.components.bronze_to_silver_utils import (
+from src.utils.etl_utils import (
     SilverTransformationConfig,
 )
 

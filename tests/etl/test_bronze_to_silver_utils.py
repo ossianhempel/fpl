@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from src.etl_pipeline.components.bronze_to_silver_utils import (
+from src.utils.etl_utils import (
     determine_season,
     add_season_column,
     validate_expected_columns,
