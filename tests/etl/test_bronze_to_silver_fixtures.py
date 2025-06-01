@@ -398,6 +398,11 @@ def test_map_team_names_preserves_fixture_data(
     assert result["away_team_id"].equals(minimal_fixtures_for_mapping["away_team_id"])
 
 
+# TODO - add test that makes sure all teams are in master team list
+
+# TODO - add test that makes sure there's never the same team in both home and away columns
+
+
 def test_transform_fixtures(
     test_fixtures_dataframe: pd.DataFrame,
     test_transformed_teams_dataframe: pd.DataFrame,

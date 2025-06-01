@@ -5,9 +5,9 @@ import os
 
 from src.utils.minio_utils import fetch_all_from_minio
 from src.utils.minio_utils import create_minio_client
+from src.config.config import SilverTransformationConfig
 from src.utils.etl_utils import (
-    fetch_bronze_data,
-    SilverTransformationConfig,
+    fetch_lake_data,
     validate_expected_columns,
     validate_important_columns,
     validate_key_columns,
@@ -20,7 +20,7 @@ from src.utils.etl_utils import (
     handle_boolean_columns,
     add_season_column,
     log_rows_dropped,
-    load_to_silver,
+    load_to_lake,
 )
 
 
@@ -134,21 +134,21 @@ if __name__ == "__main__":
 
     config = SilverTransformationConfig()
 
-    gw_dfs = fetch_bronze_data(
+    gw_dfs = fetch_lake_data(
         client=client,
         fetch_function=fetch_all_from_minio,
         config=config,
         folder="gameweeks",
     )
 
-    fixture_dfs = fetch_bronze_data(
+    fixture_dfs = fetch_lake_data(
         client=client,
         fetch_function=fetch_all_from_minio,
         config=config,
         folder="fixtures",
     )
 
-    teams_dfs = fetch_bronze_data(
+    teams_dfs = fetch_lake_data(
         client=client,
         fetch_function=fetch_all_from_minio,
         config=config,
@@ -240,7 +240,7 @@ if __name__ == "__main__":
 
     destination_path = "gameweeks/gameweeks_silver.parquet"
 
-    load_to_silver(
+    load_to_lake(
         dataframe=transformed_gw,
         bucket_name=config.destination_bucket,
         object_name=destination_path,

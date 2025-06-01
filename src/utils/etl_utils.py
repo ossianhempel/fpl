@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # TODO - move to util directory
 
 
-def fetch_bronze_data(
+def fetch_lake_data(
     client: Minio,
     config: SilverTransformationConfig | GoldTransformationConfig,
     fetch_function: Callable[
@@ -328,7 +328,7 @@ def log_rows_dropped(
         logger.info(f"Final rows: {final_rows} (Started with {initial_rows})")
 
 
-def load_to_silver(
+def load_to_lake(
     dataframe: pd.DataFrame | pl.DataFrame,
     bucket_name: str,
     object_name: str,

@@ -6,8 +6,7 @@ import os
 from src.utils.minio_utils import fetch_all_from_minio
 from src.utils.minio_utils import create_minio_client
 from src.utils.etl_utils import (
-    fetch_bronze_data,
-    SilverTransformationConfig,
+    fetch_lake_data,
     validate_expected_columns,
     validate_important_columns,
     validate_key_columns,
@@ -19,8 +18,10 @@ from src.utils.etl_utils import (
     drop_unnecessary_columns,
     log_rows_dropped,
     assert_strictly_sequential_values,
-    load_to_silver,
+    load_to_lake,
 )
+
+from src.config.config import SilverTransformationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ if __name__ == "__main__":
 
     config = SilverTransformationConfig()
 
-    teams_dfs = fetch_bronze_data(
+    teams_dfs = fetch_lake_data(
         client=client,
         fetch_function=fetch_all_from_minio,
         config=config,
@@ -152,7 +153,7 @@ if __name__ == "__main__":
 
     destination_path = "teams/teams_silver.parquet"
 
-    load_to_silver(
+    load_to_lake(
         dataframe=transformed_teams,
         bucket_name=config.destination_bucket,
         object_name=destination_path,
