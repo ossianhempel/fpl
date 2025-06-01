@@ -1,0 +1,123 @@
+{
+    "expected_columns": {
+        "teams": [
+            "team_code",
+            "team_name",
+            "league_table_position",
+            "seasonal_team_id"
+        ],
+        "fixtures": [
+            "fixture_code",
+            "gameweek",
+            "fixture_completed",
+            "ingestion_timestamp",
+            "seasonal_fixture_id",
+            "finished",
+            "kickoff_time",
+            "minutes",
+            "provisional_start_time",
+            "started",
+            "away_team_id",
+            "away_team_score",
+            "home_team_id",
+            "home_team_score",
+            "away_team_difficulty",
+            "home_team_difficulty",
+            "home_team_name",
+            "away_team_name"
+        ],
+        "gameweeks": [
+            "gameweek",
+            "assists",
+            "bonus",
+            "bps",
+            "clean_sheets",
+            "creativity",
+            "element",
+            "expected_assists",
+            "expected_goal_involvements",
+            "expected_goals",
+            "expected_goals_conceded",
+            "seasonal_fixture_id",
+            "goals_conceded",
+            "goals_scored",
+            "ict_index",
+            "influence",
+            "ingestion_timestamp",
+            "kickoff_time",
+            "minutes_played",
+            "player_name",
+            "opponent_team",
+            "own_goals",
+            "penalties_missed",
+            "penalties_saved",
+            "position",
+            "red_cards",
+            "round",
+            "saves",
+            "selected",
+            "player_started",
+            "team",
+            "team_a_score",
+            "team_h_score",
+            "threat",
+            "total_points",
+            "transfers_balance",
+            "transfers_in",
+            "transfers_out",
+            "player_cost",
+            "was_home",
+            "xP",
+            "yellow_cards"
+        ]
+    },
+    "important_columns": {
+        "teams": [
+            "team_code",
+            "team_name",
+            "league_table_position",
+            "seasonal_team_id"
+        ],
+        "fixtures": [
+            "gameweek",
+            "away_team_id",
+            "home_team_id",
+            "kickoff_time"
+        ],
+        "gameweeks": [
+            "player_name",
+            "team",
+            "opponent_team",
+            "total_points",
+            "position"
+        ]
+    },
+    "key_columns": {
+        "gameweeks": [
+            "kickoff_time",
+            "player_name",
+            "team"
+        ],
+        "fixtures": [
+            "kickoff_time",
+            "gameweek",
+            "away_team_id",
+            "home_team_id"
+        ],
+        "teams": [
+            "seasonal_team_id",
+            "pulse_id", 
+            "season"
+        ]
+    },
+    "new_columns": {
+        "gameweeks": [
+            "opponent_team",
+            "season"
+        ],
+        "fixtures": [
+            "home_team_name",
+            "away_team_name"
+        ]
+    }
+}
