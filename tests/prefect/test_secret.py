@@ -3,7 +3,7 @@ from prefect.blocks.system import Secret
 
 
 @flow
-def test_secret():
+def test_secret() -> None:
     try:
         secret = Secret.load("fpl-minio-secret-key").get()
         print("Secret loaded successfully!")
