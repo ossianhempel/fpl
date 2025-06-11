@@ -1,5 +1,6 @@
 import great_expectations as gx
 import pandas as pd
+import polars as pl
 from typing import Optional
 
 """
@@ -104,6 +105,16 @@ def create_batch_definition(
     )
 
     return batch_definition
+
+
+def run_gx_validation(
+    data_source_name,
+    data_asset_name,
+    batch_definition_name,
+    dataframe: pd.DataFrame | pl.DataFrame,
+    context=None,
+):
+    pass
 
 
 if __name__ == "__main__":
